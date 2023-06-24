@@ -1,6 +1,6 @@
 import string
 
-from .Items import RiskOfRainItem, item_table, item_pool_weights, environment_offest
+from .Items import RiskOfRainItem, RiskOfRainItemData, item_table, item_pool_weights, environment_offest
 from .Locations import RiskOfRainLocation, get_classic_item_pickups, item_pickups, orderedstage_location
 from .Rules import set_rules
 from .RoR2Environments import *
@@ -28,10 +28,12 @@ class RiskOfRainWorld(World):
      Combine loot in surprising ways and master each character until you become the havoc you feared upon your
      first crash landing.
     """
-    game: str = "Risk of Rain 2"
+    game = "Risk of Rain 2"
     option_definitions = ror2_options
     topology_present = False
-
+    for name, data in item_table.items():
+        print(name)
+        print(data)
     item_name_to_id = item_table
     location_name_to_id = item_pickups
 

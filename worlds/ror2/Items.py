@@ -1,26 +1,35 @@
-from BaseClasses import Item
+from BaseClasses import Item, ItemClassification
 from .Options import ItemWeights
 from .RoR2Environments import *
+from typing import NamedTuple, Optional
 
 
 class RiskOfRainItem(Item):
     game: str = "Risk of Rain 2"
 
 
+class RiskOfRainItemData(NamedTuple):
+    category: str
+    code: Optional[int] = None
+    item_type: ItemClassification = ItemClassification.filler
+    weight: int = 1
+
+
+offset: int = 37000
 # 37000 - 37699, 38000
-item_table: Dict[str, int] = {
-    "Dio's Best Friend":    37001,
-    "Common Item":          37002,
-    "Uncommon Item":        37003,
-    "Legendary Item":       37004,
-    "Boss Item":            37005,
-    "Lunar Item":           37006,
-    "Equipment":            37007,
-    "Item Scrap, White":    37008,
-    "Item Scrap, Green":    37009,
-    "Item Scrap, Red":      37010,
-    "Item Scrap, Yellow":   37011,
-    "Void Item":            37012
+item_table: Dict[str, RiskOfRainItemData] = {
+    "Dio's Best Friend":    RiskOfRainItemData("Upgrade", 1 + offset, ItemClassification.useful),
+    "Common Item":          RiskOfRainItemData("Upgrade", 2 + offset, ItemClassification.filler),
+    "Uncommon Item":        RiskOfRainItemData("Upgrade", 3 + offset, ItemClassification.filler),
+    "Legendary Item":       RiskOfRainItemData("Upgrade", 4 + offset, ItemClassification.useful),
+    "Boss Item":            RiskOfRainItemData("Upgrade", 5 + offset, ItemClassification.useful),
+    "Lunar Item":           RiskOfRainItemData("Upgrade", 6 + offset, ItemClassification.trap),
+    "Equipment":            RiskOfRainItemData("Upgrade", 7 + offset, ItemClassification.filler),
+    "Item Scrap, White":    RiskOfRainItemData("Upgrade", 8 + offset, ItemClassification.filler),
+    "Item Scrap, Green":    RiskOfRainItemData("Upgrade", 9 + offset, ItemClassification.filler),
+    "Item Scrap, Red":      RiskOfRainItemData("Upgrade", 10 + offset, ItemClassification.filler),
+    "Item Scrap, Yellow":   RiskOfRainItemData("Upgrade", 11 + offset, ItemClassification.filler),
+    "Void Item":            RiskOfRainItemData("Upgrade", 12 + offset, ItemClassification.filler)
 }
 
 # 37700 - 37699
