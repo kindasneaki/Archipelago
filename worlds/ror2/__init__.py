@@ -154,7 +154,7 @@ class RiskOfRainWorld(World):
         self.multiworld.itempool += itempool
 
     def set_rules(self) -> None:
-        set_rules(self.multiworld, self.player)
+        set_rules(self)
 
     def create_regions(self) -> None:
 
@@ -180,7 +180,7 @@ class RiskOfRainWorld(World):
             connection.connect(petrichor)
         else:
             # explore mode
-            create_regions(self.multiworld, self.player)
+            create_regions(self)
 
         create_events(self.multiworld, self.player)
 
