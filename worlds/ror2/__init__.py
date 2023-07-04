@@ -29,6 +29,12 @@ class RiskOfRainWorld(World):
      first crash landing.
     """
     game = "Risk of Rain 2"
+
+    item_name_groups = {
+        "Upgrade": {name for name, data in item_table.items() if data.category is "Upgrade"},
+        "Stage": {name for name, data in item_table.items() if data.category is "Stage"},
+    }
+
     option_definitions = ror2_options
     topology_present = False
     item_name_to_id = {name: data.code for name, data in item_table.items()}
