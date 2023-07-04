@@ -6,7 +6,7 @@ from .RoR2Environments import environment_vanilla_orderedstages_table, environme
 
 if TYPE_CHECKING:
     from . import RiskOfRainWorld
-    from BaseClasses import CollectionState
+    from BaseClasses import CollectionState, Location
 
 
 # Rule to see if it has access to the previous stage
@@ -76,9 +76,10 @@ def set_rules(ror2_world: "RiskOfRainWorld") -> None:
         if divisions:
             for i in range(1, divisions + 1):  # since divisions is the floor of total_locations / 25
                 if i * event_location_step != total_locations:
-                    event_loc = world.get_location(f"Pickup{i * event_location_step}", player)
+                    event_loc: Location = world.get_location(f"Pickup{i * event_location_step}", player)
                     set_rule(event_loc,
-                            lambda state, i=i: state.can_reach(f"ItemPickup{i * event_location_step - 1}", "Location", player))
+                             lambda state, pickup=i: state.can_reach(f"ItemPickup{pickup * event_location_step - 1}",
+                                                                "Location", player))
                     # we want to create a rule for each of the 25 locations per division
                 for n in range(i * event_location_step, (i + 1) * event_location_step + 1):
                     if n > total_locations:
@@ -88,7 +89,7 @@ def set_rules(ror2_world: "RiskOfRainWorld") -> None:
                                  lambda state, event_item=event_loc.item.name: state.has(event_item, player))
                     else:
                         set_rule(world.get_location(f"ItemPickup{n}", player),
-                                 lambda state, n=n: state.can_reach(f"ItemPickup{n - 1}", "Location", player))
+                                 lambda state, pickup=n: state.can_reach(f"ItemPickup{pickup - 1}", "Location", player))
         set_rule(world.get_location("Victory", player),
                  lambda state: state.can_reach(f"ItemPickup{total_locations}", "Location", player))
         if total_revivals or world.start_with_revive[player].value:

@@ -10,7 +10,7 @@ class RiskOfRainItem(Item):
 
 class RiskOfRainItemData(NamedTuple):
     category: str
-    code: Optional[int] = None
+    code: int
     item_type: ItemClassification = ItemClassification.filler
 
 
@@ -210,4 +210,4 @@ item_pool_weights: Dict[int, Dict[str, int]] = {
     ItemWeights.option_void:        void_weights,
 }
 
-lookup_id_to_name: Dict[int, str] = {id: name for name, id in item_table.items()}
+lookup_id_to_name: Dict[int, str] = {data.code: name for name, data in item_table.items()}

@@ -97,7 +97,7 @@ def create_regions(ror2_world: "RiskOfRainWorld"):
         other_regions["OrderedStage_2"].region_exits.append("Aphelian Sanctuary")
         other_regions["OrderedStage_3"].region_exits.append("Sulfur Pools")
         other_regions["Void Fields"].region_exits.append("Void Locus")
-        regions_pool: Dict = {**all_location_regions, **other_regions, **dlc_other_regions}
+        regions_pool = {**all_location_regions, **other_regions, **dlc_other_regions}
 
     # Create all the regions
     for name, data in regions_pool.items():

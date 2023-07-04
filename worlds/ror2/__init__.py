@@ -226,7 +226,7 @@ def create_events(world: MultiWorld, player: int) -> None:
             event_loc = RiskOfRainLocation(player, f"Pickup{(i + 1) * 25}", None, world_region)
             event_loc.place_locked_item(RiskOfRainItem(f"Pickup{(i + 1) * 25}", ItemClassification.progression, None, player))
             event_loc.access_rule = \
-                lambda state, i=i: state.can_reach(f"ItemPickup{((i + 1) * 25) - 1}", "Location", player)
+                lambda state, pickup=i: state.can_reach(f"ItemPickup{((pickup + 1) * 25) - 1}", "Location", player)
             world_region.locations.append(event_loc)
     elif world.goal[player] == "explore":
         for n in range(1, 6):
