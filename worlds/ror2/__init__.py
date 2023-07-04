@@ -31,8 +31,8 @@ class RiskOfRainWorld(World):
     game = "Risk of Rain 2"
 
     item_name_groups = {
-        "Upgrade": {name for name, data in item_table.items() if data.category is "Upgrade"},
-        "Stage": {name for name, data in item_table.items() if data.category is "Stage"},
+        "Upgrade": {name for name, data in item_table.items() if data.category == "Upgrade"},
+        "Stage": {name for name, data in item_table.items() if data.category == "Stage"},
     }
 
     option_definitions = ror2_options
