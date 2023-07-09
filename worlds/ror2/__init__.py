@@ -86,7 +86,8 @@ class RiskOfRainWorld(World):
                 self.multiworld.push_precollected(self.create_item(unlock[0]))
                 environments_pool.pop(unlock[0])
         else:
-            item_table["Dio's Best Friend"] = RiskOfRainItemData("Upgrade", 1 + offset, ItemClassification.progression)
+            item_table["Dio's Best Friend"] = RiskOfRainItemData("Upgrade", 1 + offset,
+                                                                 ItemClassification.progression_skip_balancing)
         # if presets are enabled generate junk_pool from the selected preset
         pool_option = self.multiworld.item_weights[self.player].value
         junk_pool: Dict[str, int] = {}
