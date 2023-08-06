@@ -147,8 +147,6 @@ class RiskOfRainWorld(World):
             )
         junk_item_count = total_locations - non_junk_item_count
         # Fill remaining items with randomly generated junk
-        # itempool += self.multiworld.random.choices(list(junk_pool.keys()), weights=list(junk_pool.values()),
-        #                                            k=junk_item_count)
         itempool += [self.get_filler_items_name() for _ in range(junk_item_count)]
         # Convert itempool into real items
         itempool = list(map(lambda name: self.create_item(name), itempool))
