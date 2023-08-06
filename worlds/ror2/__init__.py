@@ -1,6 +1,6 @@
 import string
 
-from .Items import RiskOfRainItem, RiskOfRainItemData, item_table, item_pool_weights, offset
+from .Items import RiskOfRainItem, RiskOfRainItemData, item_table, item_pool_weights, offset, get_items_by_category
 from .Locations import RiskOfRainLocation, get_classic_item_pickups, item_pickups, orderedstage_location
 from .Rules import set_rules
 from .RoR2Environments import *
@@ -31,8 +31,9 @@ class RiskOfRainWorld(World):
     game = "Risk of Rain 2"
 
     item_name_groups = {
-        "Upgrade": {name for name, data in item_table.items() if data.category == "Upgrade"},
-        "Stage": {name for name, data in item_table.items() if data.category == "Stage"},
+        "Upgrade": get_items_by_category("Upgrade"),
+        "Stage": get_items_by_category("Stage"),
+        "Filler": get_items_by_category("Filler"),
     }
 
     option_definitions = ror2_options
@@ -44,6 +45,10 @@ class RiskOfRainWorld(World):
     required_client_version = (0, 4, 2)
     web = RiskOfWeb()
     total_revivals: int
+
+    def __init__(self, multiworld: "MultiWorld", player: int):
+        super().__init__(multiworld, player)
+        self.filler_items = None
 
     def generate_early(self) -> None:
         # figure out how many revivals should exist in the pool
@@ -93,38 +98,28 @@ class RiskOfRainWorld(World):
                 environments_pool.pop(unlock[0])
         else:
             item_table["Dio's Best Friend"] = RiskOfRainItemData("Upgrade", 1 + offset, ItemClassification.progression)
+
         # if presets are enabled generate junk_pool from the selected preset
         pool_option = self.multiworld.item_weights[self.player].value
-        junk_pool: Dict[str, int] = {}
         if self.multiworld.item_pool_presets[self.player]:
-            # generate chaos weights if the preset is chosen
+            item_weight = item_pool_weights[pool_option]
+            self.filler_items = get_items_by_category("Filler")
             if pool_option == ItemWeights.option_chaos:
                 for name, max_value in item_pool_weights[pool_option].items():
-                    junk_pool[name] = self.multiworld.random.randint(0, max_value)
-            else:
-                junk_pool = item_pool_weights[pool_option].copy()
-        else:  # generate junk pool from user created presets
-            junk_pool = {
-                "Item Scrap, Green": self.multiworld.green_scrap[self.player].value,
-                "Item Scrap, Red": self.multiworld.red_scrap[self.player].value,
-                "Item Scrap, Yellow": self.multiworld.yellow_scrap[self.player].value,
-                "Item Scrap, White": self.multiworld.white_scrap[self.player].value,
-                "Common Item": self.multiworld.common_item[self.player].value,
-                "Uncommon Item": self.multiworld.uncommon_item[self.player].value,
-                "Legendary Item": self.multiworld.legendary_item[self.player].value,
-                "Boss Item": self.multiworld.boss_item[self.player].value,
-                "Lunar Item": self.multiworld.lunar_item[self.player].value,
-                "Void Item": self.multiworld.void_item[self.player].value,
-                "Equipment": self.multiworld.equipment[self.player].value
-            }
-
+                    item_weight[name] = self.multiworld.random.randint(0, max_value)
+            for key in self.filler_items:
+                self.filler_items[key] = RiskOfRainItemData("Filler", self.filler_items[key].code,
+                                                           self.filler_items[key].item_type, item_weight[key])
+        else:
+            self.filler_items = get_items_by_category("Filler")
         # remove lunar items from the pool if they're disabled in the yaml unless lunartic is rolled
-        if not (self.multiworld.enable_lunar[self.player] or pool_option == ItemWeights.option_lunartic):
-            junk_pool.pop("Lunar Item")
+        if not (self.multiworld.enable_lunar[self.player] or
+                self.multiworld.item_weights[self.player].value == ItemWeights.option_lunartic):
+            self.filler_items.pop("Lunar Item")
         # remove void items from the pool
-        if not (self.multiworld.dlc_sotv[self.player] or pool_option == ItemWeights.option_void):
-            junk_pool.pop("Void Item")
-
+        if not (self.multiworld.dlc_sotv[self.player] or
+                self.multiworld.item_weights[self.player].value == ItemWeights.option_void):
+            self.filler_items.pop("Void Item")
         # Generate item pool
         itempool: List = []
         # Add revive items for the player
@@ -134,7 +129,7 @@ class RiskOfRainWorld(World):
         for env_name, _ in environments_pool.items():
             itempool += [env_name]
 
-        nonjunk_item_count = len(itempool)
+        non_junk_item_count = len(itempool)
         if self.multiworld.goal[self.player] == "classic":
             # classic mode
             total_locations = self.multiworld.total_locations[self.player].value
@@ -150,11 +145,11 @@ class RiskOfRainWorld(World):
                     dlc_sotv=self.multiworld.dlc_sotv[self.player].value
                 )
             )
-        junk_item_count = total_locations - nonjunk_item_count
+        junk_item_count = total_locations - non_junk_item_count
         # Fill remaining items with randomly generated junk
-        itempool += self.multiworld.random.choices(list(junk_pool.keys()), weights=list(junk_pool.values()),
-                                                   k=junk_item_count)
-
+        # itempool += self.multiworld.random.choices(list(junk_pool.keys()), weights=list(junk_pool.values()),
+        #                                            k=junk_item_count)
+        itempool += [self.get_filler_items_name() for _ in range(junk_item_count)]
         # Convert itempool into real items
         itempool = list(map(lambda name: self.create_item(name), itempool))
         self.multiworld.itempool += itempool
@@ -163,7 +158,6 @@ class RiskOfRainWorld(World):
         set_rules(self)
 
     def create_regions(self) -> None:
-
         if self.multiworld.goal[self.player] == "classic":
             # classic mode
             menu = create_region(self.multiworld, self.player, "Menu")
@@ -208,6 +202,22 @@ class RiskOfRainWorld(World):
             "deathLink": self.multiworld.death_link[self.player].value,
             "offset": offset
         }
+
+    def get_filler_items_name(self) -> str:
+        if self.filler_items:
+            fillers = self.filler_items
+        else:
+            fillers = get_items_by_category("Filler")
+            # remove lunar items from the pool if they're disabled in the yaml unless lunartic is rolled
+            if not (self.multiworld.enable_lunar[self.player] or
+                    self.multiworld.item_weights[self.player].value == ItemWeights.option_lunartic):
+                self.filler_items.pop("Lunar Item")
+            # remove void items from the pool
+            if not (self.multiworld.dlc_sotv[self.player] or
+                    self.multiworld.item_weights[self.player].value == ItemWeights.option_void):
+                self.filler_items.pop("Void Item")
+        weights = [data.weight for data in fillers.values()]
+        return self.multiworld.random.choices([filler for filler in fillers.keys()], weights, k=1)[0]
 
     def create_item(self, name: str) -> Item:
         data = item_table[name]

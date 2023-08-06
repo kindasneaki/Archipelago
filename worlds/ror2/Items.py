@@ -12,23 +12,32 @@ class RiskOfRainItemData(NamedTuple):
     category: str
     code: int
     item_type: ItemClassification = ItemClassification.filler
+    weight: Optional[int] = None
+
+
+def get_items_by_category(category: str) -> Dict[str, RiskOfRainItemData]:
+    item_dict: Dict[str, RiskOfRainItemData] = {}
+    for name, item_data in item_table.items():
+        if item_data.category == category:
+            item_dict.setdefault(name, item_data)
+    return item_dict
 
 
 offset: int = 37000
 # 37000 - 37499, 38000
 item_table: Dict[str, RiskOfRainItemData] = {
-    "Dio's Best Friend":    RiskOfRainItemData("Upgrade", 1 + offset, ItemClassification.filler),
-    "Common Item":          RiskOfRainItemData("Upgrade", 2 + offset, ItemClassification.filler),
-    "Uncommon Item":        RiskOfRainItemData("Upgrade", 3 + offset, ItemClassification.filler),
-    "Legendary Item":       RiskOfRainItemData("Upgrade", 4 + offset, ItemClassification.useful),
-    "Boss Item":            RiskOfRainItemData("Upgrade", 5 + offset, ItemClassification.useful),
-    "Lunar Item":           RiskOfRainItemData("Upgrade", 6 + offset, ItemClassification.trap),
-    "Equipment":            RiskOfRainItemData("Upgrade", 7 + offset, ItemClassification.filler),
-    "Item Scrap, White":    RiskOfRainItemData("Upgrade", 8 + offset, ItemClassification.filler),
-    "Item Scrap, Green":    RiskOfRainItemData("Upgrade", 9 + offset, ItemClassification.filler),
-    "Item Scrap, Red":      RiskOfRainItemData("Upgrade", 10 + offset, ItemClassification.filler),
-    "Item Scrap, Yellow":   RiskOfRainItemData("Upgrade", 11 + offset, ItemClassification.filler),
-    "Void Item":            RiskOfRainItemData("Upgrade", 12 + offset, ItemClassification.filler),
+    "Dio's Best Friend":    RiskOfRainItemData("Extra Life", 1 + offset, ItemClassification.filler),
+    "Common Item":          RiskOfRainItemData("Filler", 2 + offset, ItemClassification.filler, 16),
+    "Uncommon Item":        RiskOfRainItemData("Filler", 3 + offset, ItemClassification.filler, 32),
+    "Legendary Item":       RiskOfRainItemData("Filler", 4 + offset, ItemClassification.useful, 8),
+    "Boss Item":            RiskOfRainItemData("Filler", 5 + offset, ItemClassification.useful, 4),
+    "Lunar Item":           RiskOfRainItemData("Filler", 6 + offset, ItemClassification.trap, 16),
+    "Equipment":            RiskOfRainItemData("Filler", 7 + offset, ItemClassification.filler, 32),
+    "Item Scrap, White":    RiskOfRainItemData("Filler", 8 + offset, ItemClassification.filler, 32),
+    "Item Scrap, Green":    RiskOfRainItemData("Filler", 9 + offset, ItemClassification.filler, 16),
+    "Item Scrap, Red":      RiskOfRainItemData("Filler", 10 + offset, ItemClassification.filler, 4),
+    "Item Scrap, Yellow":   RiskOfRainItemData("Filler", 11 + offset, ItemClassification.filler, 1),
+    "Void Item":            RiskOfRainItemData("Filler", 12 + offset, ItemClassification.filler, 16),
     "Beads of Fealty":      RiskOfRainItemData("Beads", 13 + offset, ItemClassification.progression)
 }
 
@@ -47,8 +56,8 @@ environment_table: Dict[str, RiskOfRainItemData] = {}
 # use the sotv dlc in the item table so that all names can be looked up regardless of use
 for data, key in environment_ALL_table.items():
     classification = ItemClassification.progression
-    if data in {"Hidden Realm: Bulwark's Ambry", "Hidden Realm: Gilded Coast,"}:
-        classification = ItemClassification.useful
+    if data in {"Hidden Realm: Bulwark's Ambry", "Hidden Realm: Gilded Coast"}:
+        classification = ItemClassification.filler
 
     environment_table.update(create_environment_table(data, key, classification))
 
