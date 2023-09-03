@@ -38,7 +38,12 @@ item_table: Dict[str, RiskOfRainItemData] = {
     "Item Scrap, Red":      RiskOfRainItemData("Filler", 10 + offset, ItemClassification.filler, 4),
     "Item Scrap, Yellow":   RiskOfRainItemData("Filler", 11 + offset, ItemClassification.filler, 1),
     "Void Item":            RiskOfRainItemData("Filler", 12 + offset, ItemClassification.filler, 16),
-    "Beads of Fealty":      RiskOfRainItemData("Beads", 13 + offset, ItemClassification.progression)
+    "Beads of Fealty":      RiskOfRainItemData("Beads", 13 + offset, ItemClassification.progression),
+    "Money":                RiskOfRainItemData("Filler", 300 + offset, ItemClassification.filler, 70),
+    "Lunar Coin":           RiskOfRainItemData("Filler", 301 + offset, ItemClassification.filler, 70),
+    "EXP":                  RiskOfRainItemData("Filler", 302 + offset, ItemClassification.filler, 70),
+    "Mountain Shrine Trap": RiskOfRainItemData("Filler", 400 + offset, ItemClassification.trap, 70),
+    "Time Warp Trap":       RiskOfRainItemData("Filler", 401 + offset, ItemClassification.trap, 70),
 }
 
 # 37700 - 37699
