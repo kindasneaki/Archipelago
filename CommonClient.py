@@ -267,6 +267,7 @@ class CommonContext:
         if self.server and self.server.socket is not None:
             await self.server.socket.close()
         self.reset_server_state()
+        self.ui.update_texts(self)
 
     def reset_server_state(self):
         self.auth = None
@@ -399,6 +400,9 @@ class CommonContext:
                 self.permissions[permission_name] = flag.name
             except Exception as e:  # safeguard against permissions that may be implemented in the future
                 logger.exception(e)
+
+    def update_kivy_text(self):
+        self.ui.update_texts(self)
 
     async def shutdown(self):
         self.server_address = ""
@@ -670,6 +674,7 @@ async def process_server_cmd(ctx: CommonContext, args: dict):
         logger.exception(f"Could not get command from {args}")
         raise
     if cmd == 'RoomInfo':
+        ctx.update_kivy_text()
         if ctx.seed_name and ctx.seed_name != args["seed_name"]:
             msg = "The server is running a different multiworld than your client is. (invalid seed_name)"
             logger.info(msg, extra={'compact_gui': True})
