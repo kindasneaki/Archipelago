@@ -9,6 +9,19 @@ class Goal(Choice):
     option_ordeals = 1
 
 
+class NeededCrystalShards(Range):
+    """The Amount of shards needed to defeat Zeromus"""
+    display_name = "Crystal Shards needed"
+    range_start = 1
+    range_end = 4
+    default = 3
+
+
+class MoonAfterUnderground(DefaultOnToggle):
+    """This is to set the logic where it expects you to go underground before going to the moon"""
+    display_name = "Moon after Underground"
+
+
 class StartingCharacter(Choice):
     """Starting Character"""
     display_name = "Starting Character"
@@ -36,6 +49,8 @@ class AvailableCharacters(OptionSet):
 
 ff4_options: Dict[str, type(Option)] = {
     "goal":                     Goal,
+    "needed_shards":            NeededCrystalShards,
+    "moon_after_underground":   MoonAfterUnderground,
     "starting_character":       StartingCharacter,
     "available_characters":     AvailableCharacters
 }

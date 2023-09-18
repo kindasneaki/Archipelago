@@ -10,7 +10,7 @@ class FF4Item(Item):
 class FF4ItemData(NamedTuple):
     group: str
     code: Optional[int] = None
-    classification = ItemClassification = ItemClassification.filler
+    classification: ItemClassification = ItemClassification.filler
     max_quantity: int = 1
     weight: int = 1
 
@@ -26,7 +26,7 @@ def get_items_by_group(group: str) -> Dict[str, FF4ItemData]:
 
 id_offset: int = 44444000
 
-item_table: Dict[str, FF4ItemData] = {
+key_item_table: Dict[str, FF4ItemData] = {
     # Characters
     "Character 1":          FF4ItemData("Character", 1 + id_offset, ItemClassification.progression),
     "Character 2":          FF4ItemData("Character", 2 + id_offset, ItemClassification.progression),
@@ -51,10 +51,11 @@ item_table: Dict[str, FF4ItemData] = {
     "Pink Tail":            FF4ItemData("KeyItem", 70 + id_offset, ItemClassification.useful),
     "Pan":                  FF4ItemData("KeyItem", 62 + id_offset, ItemClassification.progression),
     "Adamant":              FF4ItemData("KeyItem", 63 + id_offset, ItemClassification.progression),
-    "Crystal Shard":        FF4ItemData("Crystal", 89 + id_offset, ItemClassification.progression, 4),
+    "Crystal Shard":        FF4ItemData("Crystal", 89 + id_offset, ItemClassification.progression, 4, 1),
 }
 
 filler_item_table: Dict[str, FF4ItemData] = {
     # Items
     "Potion":               FF4ItemData("Filler", 200 + id_offset, ItemClassification.filler),
 }
+item_table = {**key_item_table, **filler_item_table}

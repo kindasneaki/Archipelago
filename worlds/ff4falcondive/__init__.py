@@ -2,7 +2,7 @@ from .Options import ff4_options
 from .Items import item_table, FF4Item, get_items_by_group
 from .Locations import location_table, FF4Location
 from .Regions import create_regions
-from .Rules import set_rules
+# from .Rules import set_rules
 
 from typing import Dict, Any, List
 from BaseClasses import Item, ItemClassification, MultiWorld, Tutorial
@@ -42,7 +42,6 @@ class FF4World(World):
         # Start with 1 character
         self.multiworld.push_precollected(self.multiworld.create_item("Character 1", self.player))
 
-
         while len(itempool) < total_locations:
             itempool.append(self.create_item(self.get_filler_item_name()))
 
@@ -55,15 +54,15 @@ class FF4World(World):
     def get_filler_item_name(self) -> str:
         fillers = get_items_by_group("Filler")
         weights = [data.weight for data in fillers.values()]
-        return "Pink Tail"
+        return self.multiworld.random.choices([filler for filler in fillers.keys()], weights, k=1)[0]
 
     def create_regions(self) -> None:
         create_regions(self.multiworld, self.player)
         # Create Victory event
         create_events(self.multiworld, self.player)
 
-    def set_rules(self) -> None:
-        set_rules(self.multiworld, self.player)
+    # def set_rules(self) -> None:
+    #     set_rules(self.multiworld, self.player)
 
     def fill_slot_data(self) -> Dict[str, Any]:
         return {
@@ -80,6 +79,9 @@ def create_events(multiworld: MultiWorld, player: int) -> None:
     victory_region.locations.append(victory_event)
 
     zeromus_region = multiworld.get_region("Zeromus", player)
+    shards = multiworld.needed_shards[player].value
+    multiworld.get_entrance("Zeromus", player).access_rule = \
+        lambda state: state.has("Crystal Shard", player, shards)
     zeromus_event = FF4Location(player, "Defeat Zeromus", None, zeromus_region)
     zeromus_event.place_locked_item(FF4Item("Defeat Zeromus", ItemClassification.progression, None, player))
     zeromus_region.locations.append(zeromus_event)
