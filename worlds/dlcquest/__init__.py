@@ -3,7 +3,7 @@ from BaseClasses import Tutorial
 from worlds.AutoWorld import World, WebWorld
 from .Items import DLCQuestItem, item_table, ItemData, create_items
 from .Locations import location_table, DLCQuestLocation
-from .Options import DLCQuest_options, DLCQuestOptions, fetch_options
+from .Options import DLCQuestOptions
 from .Rules import set_rules
 from .Regions import create_regions
 from . import Options

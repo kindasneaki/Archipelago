@@ -67,12 +67,12 @@ class RiskOfRainWorld(World):
                                   total_locations)
         if self.options.start_with_revive:
             self.total_revivals -= 1
-        if self.multiworld.victory[self.player] == "voidling" and not self.multiworld.dlc_sotv[self.player]:
-            self.multiworld.victory[self.player].value = "any"
+        if self.options.victory == "voidling" and not self.options.dlc_sotv:
+            self.options.victory.value = "any"
 
     def create_regions(self) -> None:
 
-        if self.multiworld.goal[self.player] == "classic":
+        if self.options.goal == "classic":
             # classic mode
             menu = create_region(self.multiworld, self.player, "Menu")
             self.multiworld.regions.append(menu)
@@ -81,7 +81,7 @@ class RiskOfRainWorld(World):
             victory_region = create_region(self.multiworld, self.player, "Victory")
             self.multiworld.regions.append(victory_region)
             petrichor = create_region(self.multiworld, self.player, "Petrichor V",
-                                      get_classic_item_pickups(self.multiworld.total_locations[self.player].value))
+                                      get_classic_item_pickups(self.options.total_locations.value))
             self.multiworld.regions.append(petrichor)
 
             # classic mode can get to victory from the beginning of the game
@@ -109,14 +109,14 @@ class RiskOfRainWorld(World):
 
             # figure out all available ordered stages for each tier
             environment_available_orderedstages_table = environment_vanilla_orderedstages_table
-            if self.multiworld.dlc_sotv[self.player]:
+            if self.options.dlc_sotv:
                 environment_available_orderedstages_table = \
                     collapse_dict_list_vertical(environment_available_orderedstages_table,
                                                 environment_sotv_orderedstages_table)
 
             environments_pool = shift_by_offset(environment_vanilla_table, offset + 700)
 
-            if self.multiworld.dlc_sotv[self.player]:
+            if self.options.dlc_sotv:
                 environment_offset_table = shift_by_offset(environment_sotv_table, offset + 700)
                 environments_pool = {**environments_pool, **environment_offset_table}
             environments_to_precollect = 5 if self.options.begin_with_loop else 1
@@ -174,9 +174,9 @@ class RiskOfRainWorld(World):
 
     def create_junk_pool(self) -> Dict:
         # if presets are enabled generate junk_pool from the selected preset
-        pool_option = self.multiworld.item_weights[self.player].value
+        pool_option = self.options.item_weights.value
         junk_pool: Dict[str, int] = {}
-        if self.multiworld.item_pool_presets[self.player]:
+        if self.options.item_pool_presets:
             # generate chaos weights if the preset is chosen
             if pool_option == ItemWeights.option_chaos:
                 for name, max_value in item_pool_weights[pool_option].items():
@@ -185,32 +185,32 @@ class RiskOfRainWorld(World):
                 junk_pool = item_pool_weights[pool_option].copy()
         else:  # generate junk pool from user created presets
             junk_pool = {
-                "Item Scrap, Green": self.multiworld.green_scrap[self.player].value,
-                "Item Scrap, Red": self.multiworld.red_scrap[self.player].value,
-                "Item Scrap, Yellow": self.multiworld.yellow_scrap[self.player].value,
-                "Item Scrap, White": self.multiworld.white_scrap[self.player].value,
-                "Common Item": self.multiworld.common_item[self.player].value,
-                "Uncommon Item": self.multiworld.uncommon_item[self.player].value,
-                "Legendary Item": self.multiworld.legendary_item[self.player].value,
-                "Boss Item": self.multiworld.boss_item[self.player].value,
-                "Lunar Item": self.multiworld.lunar_item[self.player].value,
-                "Void Item": self.multiworld.void_item[self.player].value,
-                "Equipment": self.multiworld.equipment[self.player].value,
-                "Money": self.multiworld.money[self.player].value,
-                "Lunar Coin": self.multiworld.lunar_coin[self.player].value,
-                "1000 Exp": self.multiworld.experience[self.player].value,
-                "Mountain Trap": self.multiworld.mountain_trap[self.player].value,
-                "Time Warp Trap": self.multiworld.time_warp_trap[self.player].value,
-                "Combat Trap": self.multiworld.combat_trap[self.player].value,
-                "Teleport Trap": self.multiworld.teleport_trap[self.player].value,
+                "Item Scrap, Green": self.options.green_scrap.value,
+                "Item Scrap, Red": self.options.red_scrap.value,
+                "Item Scrap, Yellow": self.options.yellow_scrap.value,
+                "Item Scrap, White": self.options.white_scrap.value,
+                "Common Item": self.options.common_item.value,
+                "Uncommon Item": self.options.uncommon_item.value,
+                "Legendary Item": self.options.legendary_item.value,
+                "Boss Item": self.options.boss_item.value,
+                "Lunar Item": self.options.lunar_item.value,
+                "Void Item": self.options.void_item.value,
+                "Equipment": self.options.equipment.value,
+                "Money": self.options.money.value,
+                "Lunar Coin": self.options.lunar_coin.value,
+                "1000 Exp": self.options.experience.value,
+                "Mountain Trap": self.options.mountain_trap.value,
+                "Time Warp Trap": self.options.time_warp_trap.value,
+                "Combat Trap": self.options.combat_trap.value,
+                "Teleport Trap": self.options.teleport_trap.value,
             }
-        if not self.multiworld.enable_trap[self.player]:
+        if not self.options.enable_trap:
             junk_pool.pop("Mountain Trap")
             junk_pool.pop("Time Warp Trap")
             junk_pool.pop("Combat Trap")
             junk_pool.pop("Teleport Trap")
         # remove lunar items from the pool
-        if not (self.multiworld.enable_lunar[self.player] or pool_option == ItemWeights.option_lunartic):
+        if not (self.options.enable_lunar or pool_option == ItemWeights.option_lunartic):
             junk_pool.pop("Lunar Item")
         # remove void items from the pool
         if not (self.options.dlc_sotv or pool_option == ItemWeights.option_void):
@@ -235,10 +235,11 @@ class RiskOfRainWorld(World):
         options_dict = self.options.as_dict("item_pickup_step", "shrine_use_step", "goal", "total_locations",
                                       "chests_per_stage", "shrines_per_stage", "scavengers_per_stage",
                                       "scanner_per_stage", "altars_per_stage", "total_revivals", "start_with_revive",
-                                      "final_stage_death", "death_link", "offset", casing="camel")
+                                      "final_stage_death", "death_link", casing="camel")
         return {
             **options_dict,
             "seed": "".join(self.multiworld.per_slot_randoms[self.player].choice(string.digits) for _ in range(16)),
+            "offset": offset
         }
 
 
@@ -257,7 +258,7 @@ def create_events(world: MultiWorld, player: int) -> None:
             event_loc.access_rule = \
                 lambda state, i=i: state.can_reach(f"ItemPickup{((i + 1) * 25) - 1}", "Location", player)
             world_region.locations.append(event_loc)
-    elif world.goal[player] == "explore":
+    elif world.worlds[player].options.goal == "explore":
         event_region = world.get_region("OrderedStage_5", player)
         event_loc = RiskOfRainLocation(player, f"Stage 5", None, event_region)
         event_loc.place_locked_item(RiskOfRainItem(f"Stage 5", ItemClassification.progression, None, player))
