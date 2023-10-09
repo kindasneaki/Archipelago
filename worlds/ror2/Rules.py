@@ -3,6 +3,7 @@ from worlds.generic.Rules import set_rule, add_rule
 from .Locations import orderedstage_location
 from .RoR2Environments import environment_vanilla_orderedstages_table, environment_sotv_orderedstages_table, \
     environment_orderedstages_table
+from .Options import ROR2Options
 from typing import Set, TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -45,22 +46,22 @@ def get_stage_event(world, player: int, stage_number: int):
         lambda state: state.has(f"Stage {stage_number + 1}", player)
 
 
-def set_rules(ror2_world: "RiskOfRainWorld") -> None:
+def set_rules(ror2_world: "RiskOfRainWorld", ror2_options: ROR2Options) -> None:
     player = ror2_world.player
     world = ror2_world.multiworld
-    if world.goal[player] == "classic":
+    if ror2_options.goal == "classic":
         # classic mode
-        total_locations = world.total_locations[player].value  # total locations for current player
+        total_locations = ror2_options.total_locations.value  # total locations for current player
     else:
         # explore mode
         total_locations = len(
             orderedstage_location.get_locations(
-                chests=world.chests_per_stage[player].value,
-                shrines=world.shrines_per_stage[player].value,
-                scavengers=world.scavengers_per_stage[player].value,
-                scanners=world.scanner_per_stage[player].value,
-                altars=world.altars_per_stage[player].value,
-                dlc_sotv=world.dlc_sotv[player].value
+                chests=ror2_options.chests_per_stage.value,
+                shrines=ror2_options.shrines_per_stage.value,
+                scavengers=ror2_options.scavengers_per_stage.value,
+                scanners=ror2_options.scanner_per_stage.value,
+                altars=ror2_options.altars_per_stage.value,
+                dlc_sotv=ror2_options.dlc_sotv.value
             )
         )
 
@@ -68,7 +69,7 @@ def set_rules(ror2_world: "RiskOfRainWorld") -> None:
     divisions = total_locations // event_location_step
     total_revivals = world.worlds[player].total_revivals  # pulling this info we calculated in generate_basic
 
-    if world.goal[player] == "classic":
+    if ror2_options.goal == "classic":
         # classic mode
         if divisions:
             for i in range(1, divisions + 1):  # since divisions is the floor of total_locations / 25
@@ -94,7 +95,7 @@ def set_rules(ror2_world: "RiskOfRainWorld") -> None:
                      lambda state: state.has("Dio's Best Friend", player,
                                              total_revivals + world.start_with_revive[player]))
 
-    elif world.goal[player] == "explore":
+    elif ror2_options.goal == "explore":
         # When explore_mode is used,
         #   scavengers need to be locked till after a full loop since that is when they are capable of spawning.
         # (While technically the requirement is just beating 5 stages, this will ensure that the player will have
@@ -102,11 +103,11 @@ def set_rules(ror2_world: "RiskOfRainWorld") -> None:
         #   help prevent being stuck in the same stages until that point.)
 
         # Regions
-        chests = world.chests_per_stage[player]
-        shrines = world.shrines_per_stage[player]
-        newts = world.altars_per_stage[player]
-        scavengers = world.scavengers_per_stage[player]
-        scanners = world.scanner_per_stage[player]
+        chests = ror2_options.chests_per_stage.value
+        shrines = ror2_options.shrines_per_stage.value
+        newts = ror2_options.altars_per_stage.value
+        scavengers = ror2_options.scavengers_per_stage.value
+        scanners = ror2_options.scanner_per_stage.value
         for i in range(len(environment_vanilla_orderedstages_table)):
             for environment_name, _ in environment_vanilla_orderedstages_table[i].items():
                 # Make sure to go through each location
@@ -125,7 +126,7 @@ def set_rules(ror2_world: "RiskOfRainWorld") -> None:
                     has_entrance_access_rule(world, f"Stage {i}", environment_name, player)
             get_stage_event(world, player, i)
 
-        if world.dlc_sotv[player]:
+        if ror2_options.dlc_sotv:
             for i in range(len(environment_sotv_orderedstages_table)):
                 for environment_name, _ in environment_sotv_orderedstages_table[i].items():
                     # Make sure to go through each location
@@ -149,8 +150,8 @@ def set_rules(ror2_world: "RiskOfRainWorld") -> None:
         has_entrance_access_rule(world, "Stage 5", "Commencement", player)
         has_entrance_access_rule(world, "Stage 5", "Hidden Realm: A Moment, Fractured", player)
         has_entrance_access_rule(world, "Beads of Fealty", "Hidden Realm: A Moment, Whole", player)
-        if world.dlc_sotv[player]:
-            if world.victory[player] == "voidling":
+        if ror2_options.dlc_sotv:
+            if ror2_options.victory == "voidling":
                 has_all_items(world, {"Stage 5", "The Planetarium"}, "Commencement", player)
             has_entrance_access_rule(world, "Stage 5", "The Planetarium", player)
             has_entrance_access_rule(world, "Stage 5", "Void Locus", player)
