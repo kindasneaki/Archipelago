@@ -8,8 +8,7 @@ class ItemData(typing.NamedTuple):
     item_name: str
     ladxr_id: str
     classification: ItemClassification
-    mark_only_first_progression: bool = False
-    created_for_players = set()
+
     @property
     def item_id(self):
         return CHEST_ITEMS[self.ladxr_id]
@@ -27,11 +26,21 @@ class DungeonItemData(ItemData):
     @property
     def dungeon_index(self):
         return int(self.ladxr_id[-1])
-    
+
     @property
     def dungeon_item_type(self):
         s = self.ladxr_id[:-1]
         return DungeonItemType.__dict__[s]
+
+
+class TradeItemData(ItemData):
+    vanilla_location = None
+
+    def __new__(cls, item_name, ladxr_id, classification, vanilla_location):
+        self = super(ItemData, cls).__new__(cls, (item_name, ladxr_id, classification))
+        self.vanilla_location = vanilla_location
+        return self
+
 
 class LinksAwakeningItem(Item):
     game: str = Common.LINKS_AWAKENING
@@ -40,16 +49,10 @@ class LinksAwakeningItem(Item):
         classification = item_data.classification
         if callable(classification):
             classification = classification(world, player)
-        # this doesn't work lol
-        MARK_FIRST_ITEM = False
-        if MARK_FIRST_ITEM:
-            if item_data.mark_only_first_progression:
-                if player in item_data.created_for_players:
-                    classification = ItemClassification.filler
-                else:
-                    item_data.created_for_players.add(player)
+
         super().__init__(item_data.item_name, classification, Common.BASE_ID + item_data.item_id, player)
         self.item_data = item_data
+
 
 # TODO: use _NAMES instead?
 class ItemName:
@@ -66,7 +69,6 @@ class ItemName:
     BOMB = "Bomb"
     SWORD = "Progressive Sword"
     FLIPPERS = "Flippers"
-    MAGNIFYING_LENS = "Magnifying Lens"
     MEDICINE = "Medicine"
     TAIL_KEY = "Tail Key"
     ANGLER_KEY = "Angler Key"
@@ -80,8 +82,8 @@ class ItemName:
     RUPEES_200 = "200 Rupees"
     RUPEES_500 = "500 Rupees"
     SEASHELL = "Seashell"
-    MESSAGE = "Master Stalfos' Message"
-    GEL = "Gel"
+    MESSAGE = "Nothing"
+    GEL = "Zol Attack"
     BOOMERANG = "Boomerang"
     HEART_PIECE = "Heart Piece"
     BOWWOW = "BowWow"
@@ -96,6 +98,7 @@ class ItemName:
     HEART_CONTAINER = "Heart Container"
     BAD_HEART_CONTAINER = "Bad Heart Container"
     TOADSTOOL = "Toadstool"
+    GUARDIAN_ACORN = "Guardian Acorn"
     KEY = "Key"
     KEY1 = "Small Key (Tail Cave)"
     KEY2 = "Small Key (Bottle Grotto)"
@@ -171,8 +174,9 @@ class ItemName:
     TRADING_ITEM_NECKLACE = "Necklace"
     TRADING_ITEM_SCALE = "Scale"
     TRADING_ITEM_MAGNIFYING_GLASS = "Magnifying Glass"
+    PIECE_OF_POWER = "Piece Of Power"
 
-trade_item_prog = ItemClassification.progression 
+trade_item_prog = ItemClassification.progression
 
 links_awakening_items = [
     ItemData(ItemName.POWER_BRACELET, "POWER_BRACELET", ItemClassification.progression),
@@ -184,11 +188,10 @@ links_awakening_items = [
     ItemData(ItemName.OCARINA, "OCARINA", ItemClassification.progression),
     ItemData(ItemName.FEATHER, "FEATHER", ItemClassification.progression),
     ItemData(ItemName.SHOVEL, "SHOVEL", ItemClassification.progression),
-    ItemData(ItemName.MAGIC_POWDER, "MAGIC_POWDER", ItemClassification.progression, True),
-    ItemData(ItemName.BOMB, "BOMB", ItemClassification.progression, True),
+    ItemData(ItemName.MAGIC_POWDER, "MAGIC_POWDER", ItemClassification.progression),
+    ItemData(ItemName.BOMB, "BOMB", ItemClassification.progression),
     ItemData(ItemName.SWORD, "SWORD", ItemClassification.progression),
     ItemData(ItemName.FLIPPERS, "FLIPPERS", ItemClassification.progression),
-    ItemData(ItemName.MAGNIFYING_LENS, "MAGNIFYING_LENS", ItemClassification.progression),
     ItemData(ItemName.MEDICINE, "MEDICINE", ItemClassification.useful),
     ItemData(ItemName.TAIL_KEY, "TAIL_KEY", ItemClassification.progression),
     ItemData(ItemName.ANGLER_KEY, "ANGLER_KEY", ItemClassification.progression),
@@ -196,13 +199,13 @@ links_awakening_items = [
     ItemData(ItemName.BIRD_KEY, "BIRD_KEY", ItemClassification.progression),
     ItemData(ItemName.SLIME_KEY, "SLIME_KEY", ItemClassification.progression),
     ItemData(ItemName.GOLD_LEAF, "GOLD_LEAF", ItemClassification.progression),
-    ItemData(ItemName.RUPEES_20, "RUPEES_20", ItemClassification.filler),
-    ItemData(ItemName.RUPEES_50, "RUPEES_50", ItemClassification.useful),
+    ItemData(ItemName.RUPEES_20, "RUPEES_20", ItemClassification.progression_skip_balancing),
+    ItemData(ItemName.RUPEES_50, "RUPEES_50", ItemClassification.progression_skip_balancing),
     ItemData(ItemName.RUPEES_100, "RUPEES_100", ItemClassification.progression_skip_balancing),
-    ItemData(ItemName.RUPEES_200, "RUPEES_200", ItemClassification.progression_skip_balancing),
-    ItemData(ItemName.RUPEES_500, "RUPEES_500", ItemClassification.progression_skip_balancing),
+    ItemData(ItemName.RUPEES_200, "RUPEES_200", ItemClassification.progression),
+    ItemData(ItemName.RUPEES_500, "RUPEES_500", ItemClassification.progression),
     ItemData(ItemName.SEASHELL, "SEASHELL", ItemClassification.progression_skip_balancing),
-    ItemData(ItemName.MESSAGE, "MESSAGE", ItemClassification.progression),
+    ItemData(ItemName.MESSAGE, "MESSAGE", ItemClassification.filler),
     ItemData(ItemName.GEL, "GEL", ItemClassification.trap),
     ItemData(ItemName.BOOMERANG, "BOOMERANG", ItemClassification.progression),
     ItemData(ItemName.HEART_PIECE, "HEART_PIECE", ItemClassification.filler),
@@ -218,6 +221,7 @@ links_awakening_items = [
     ItemData(ItemName.HEART_CONTAINER, "HEART_CONTAINER", ItemClassification.useful),
     #ItemData(ItemName.BAD_HEART_CONTAINER, "BAD_HEART_CONTAINER", ItemClassification.trap),
     ItemData(ItemName.TOADSTOOL, "TOADSTOOL", ItemClassification.progression),
+    ItemData(ItemName.GUARDIAN_ACORN, "GUARDIAN_ACORN", ItemClassification.filler),
     DungeonItemData(ItemName.KEY, "KEY", ItemClassification.progression),
     DungeonItemData(ItemName.KEY1, "KEY1", ItemClassification.progression),
     DungeonItemData(ItemName.KEY2, "KEY2", ItemClassification.progression),
@@ -279,20 +283,21 @@ links_awakening_items = [
     DungeonItemData(ItemName.INSTRUMENT6, "INSTRUMENT6", ItemClassification.progression),
     DungeonItemData(ItemName.INSTRUMENT7, "INSTRUMENT7", ItemClassification.progression),
     DungeonItemData(ItemName.INSTRUMENT8, "INSTRUMENT8", ItemClassification.progression),
-    ItemData(ItemName.TRADING_ITEM_YOSHI_DOLL, "TRADING_ITEM_YOSHI_DOLL", trade_item_prog),
-    ItemData(ItemName.TRADING_ITEM_RIBBON, "TRADING_ITEM_RIBBON", trade_item_prog),
-    ItemData(ItemName.TRADING_ITEM_DOG_FOOD, "TRADING_ITEM_DOG_FOOD", trade_item_prog),
-    ItemData(ItemName.TRADING_ITEM_BANANAS, "TRADING_ITEM_BANANAS", trade_item_prog),
-    ItemData(ItemName.TRADING_ITEM_STICK, "TRADING_ITEM_STICK", trade_item_prog),
-    ItemData(ItemName.TRADING_ITEM_HONEYCOMB, "TRADING_ITEM_HONEYCOMB", trade_item_prog),
-    ItemData(ItemName.TRADING_ITEM_PINEAPPLE, "TRADING_ITEM_PINEAPPLE", trade_item_prog),
-    ItemData(ItemName.TRADING_ITEM_HIBISCUS, "TRADING_ITEM_HIBISCUS", trade_item_prog),
-    ItemData(ItemName.TRADING_ITEM_LETTER, "TRADING_ITEM_LETTER", trade_item_prog),
-    ItemData(ItemName.TRADING_ITEM_BROOM, "TRADING_ITEM_BROOM", trade_item_prog),
-    ItemData(ItemName.TRADING_ITEM_FISHING_HOOK, "TRADING_ITEM_FISHING_HOOK", trade_item_prog),
-    ItemData(ItemName.TRADING_ITEM_NECKLACE, "TRADING_ITEM_NECKLACE", trade_item_prog),
-    ItemData(ItemName.TRADING_ITEM_SCALE, "TRADING_ITEM_SCALE", trade_item_prog),
-    ItemData(ItemName.TRADING_ITEM_MAGNIFYING_GLASS, "TRADING_ITEM_MAGNIFYING_GLASS", trade_item_prog)
+    TradeItemData(ItemName.TRADING_ITEM_YOSHI_DOLL, "TRADING_ITEM_YOSHI_DOLL", trade_item_prog, "Trendy Game (Mabe Village)"),
+    TradeItemData(ItemName.TRADING_ITEM_RIBBON, "TRADING_ITEM_RIBBON", trade_item_prog, "Papahl's Wife (Mabe Village)"),
+    TradeItemData(ItemName.TRADING_ITEM_DOG_FOOD, "TRADING_ITEM_DOG_FOOD", trade_item_prog, "YipYip (Mabe Village)"),
+    TradeItemData(ItemName.TRADING_ITEM_BANANAS, "TRADING_ITEM_BANANAS", trade_item_prog, "Banana Sale (Toronbo Shores)"),
+    TradeItemData(ItemName.TRADING_ITEM_STICK, "TRADING_ITEM_STICK", trade_item_prog, "Kiki (Ukuku Prairie)"),
+    TradeItemData(ItemName.TRADING_ITEM_HONEYCOMB, "TRADING_ITEM_HONEYCOMB", trade_item_prog, "Honeycomb (Ukuku Prairie)"),
+    TradeItemData(ItemName.TRADING_ITEM_PINEAPPLE, "TRADING_ITEM_PINEAPPLE", trade_item_prog, "Bear Cook (Animal Village)"),
+    TradeItemData(ItemName.TRADING_ITEM_HIBISCUS, "TRADING_ITEM_HIBISCUS", trade_item_prog, "Papahl (Tal Tal Heights)"),
+    TradeItemData(ItemName.TRADING_ITEM_LETTER, "TRADING_ITEM_LETTER", trade_item_prog, "Goat (Animal Village)"),
+    TradeItemData(ItemName.TRADING_ITEM_BROOM, "TRADING_ITEM_BROOM", trade_item_prog, "MrWrite (Goponga Swamp)"),
+    TradeItemData(ItemName.TRADING_ITEM_FISHING_HOOK, "TRADING_ITEM_FISHING_HOOK", trade_item_prog, "Grandma (Animal Village)"),
+    TradeItemData(ItemName.TRADING_ITEM_NECKLACE, "TRADING_ITEM_NECKLACE", trade_item_prog, "Fisher (Martha's Bay)"),
+    TradeItemData(ItemName.TRADING_ITEM_SCALE, "TRADING_ITEM_SCALE", trade_item_prog, "Mermaid (Martha's Bay)"),
+    TradeItemData(ItemName.TRADING_ITEM_MAGNIFYING_GLASS, "TRADING_ITEM_MAGNIFYING_GLASS", trade_item_prog, "Mermaid Statue (Martha's Bay)"),
+    ItemData(ItemName.PIECE_OF_POWER, "PIECE_OF_POWER", ItemClassification.filler),
 ]
 
 ladxr_item_to_la_item_name = {
@@ -301,4 +306,136 @@ ladxr_item_to_la_item_name = {
 
 links_awakening_items_by_name = {
     item.item_name : item for item in links_awakening_items
+}
+
+links_awakening_item_name_groups: typing.Dict[str, typing.Set[str]] = {
+    "Instruments": {
+        "Full Moon Cello",
+        "Conch Horn",
+        "Sea Lily's Bell",
+        "Surf Harp",
+        "Wind Marimba",
+        "Coral Triangle",
+        "Organ of Evening Calm",
+        "Thunder Drum",
+    },
+    "Entrance Keys": {
+        "Tail Key",
+        "Angler Key",
+        "Face Key",
+        "Bird Key",
+        "Slime Key",
+    },
+    "Nightmare Keys": {
+        "Nightmare Key (Angler's Tunnel)",
+        "Nightmare Key (Bottle Grotto)",
+        "Nightmare Key (Catfish's Maw)",
+        "Nightmare Key (Color Dungeon)",
+        "Nightmare Key (Eagle's Tower)",
+        "Nightmare Key (Face Shrine)",
+        "Nightmare Key (Key Cavern)",
+        "Nightmare Key (Tail Cave)",
+        "Nightmare Key (Turtle Rock)",
+    },
+    "Small Keys": {
+        "Small Key (Angler's Tunnel)",
+        "Small Key (Bottle Grotto)",
+        "Small Key (Catfish's Maw)",
+        "Small Key (Color Dungeon)",
+        "Small Key (Eagle's Tower)",
+        "Small Key (Face Shrine)",
+        "Small Key (Key Cavern)",
+        "Small Key (Tail Cave)",
+        "Small Key (Turtle Rock)",
+    },
+    "Compasses": {
+        "Compass (Angler's Tunnel)",
+        "Compass (Bottle Grotto)",
+        "Compass (Catfish's Maw)",
+        "Compass (Color Dungeon)",
+        "Compass (Eagle's Tower)",
+        "Compass (Face Shrine)",
+        "Compass (Key Cavern)",
+        "Compass (Tail Cave)",
+        "Compass (Turtle Rock)",
+    },
+    "Maps": {
+        "Dungeon Map (Angler's Tunnel)",
+        "Dungeon Map (Bottle Grotto)",
+        "Dungeon Map (Catfish's Maw)",
+        "Dungeon Map (Color Dungeon)",
+        "Dungeon Map (Eagle's Tower)",
+        "Dungeon Map (Face Shrine)",
+        "Dungeon Map (Key Cavern)",
+        "Dungeon Map (Tail Cave)",
+        "Dungeon Map (Turtle Rock)",
+    },
+    "Stone Beaks": {
+        "Stone Beak (Angler's Tunnel)",
+        "Stone Beak (Bottle Grotto)",
+        "Stone Beak (Catfish's Maw)",
+        "Stone Beak (Color Dungeon)",
+        "Stone Beak (Eagle's Tower)",
+        "Stone Beak (Face Shrine)",
+        "Stone Beak (Key Cavern)",
+        "Stone Beak (Tail Cave)",
+        "Stone Beak (Turtle Rock)",
+    },
+    "Trading Items": {
+        "Yoshi Doll",
+        "Ribbon",
+        "Dog Food",
+        "Bananas",
+        "Stick",
+        "Honeycomb",
+        "Pineapple",
+        "Hibiscus",
+        "Letter",
+        "Broom",
+        "Fishing Hook",
+        "Necklace",
+        "Scale",
+        "Magnifying Glass",
+    },
+    "Rupees": {
+        "20 Rupees",
+        "50 Rupees",
+        "100 Rupees",
+        "200 Rupees",
+        "500 Rupees",
+    },
+    "Upgrades": {
+        "Max Powder Upgrade",
+        "Max Bombs Upgrade",
+        "Max Arrows Upgrade",
+    },
+    "Songs": {
+        "Ballad of the Wind Fish",
+        "Manbo's Mambo",
+        "Frog's Song of Soul",
+    },
+    "Tunics": {
+        "Red Tunic",
+        "Blue Tunic",
+    },
+    "Bush Breakers": {
+        "Progressive Power Bracelet",
+        "Magic Rod",
+        "Magic Powder",
+        "Bomb",
+        "Progressive Sword",
+        "Boomerang",
+    },
+    "Sword": {
+        "Progressive Sword",
+    },
+    "Shield": {
+        "Progressive Shield",
+    },
+    "Power Bracelet": {
+        "Progressive Power Bracelet",
+    },
+    "Bracelet": {
+        "Progressive Power Bracelet",
+    },
 }

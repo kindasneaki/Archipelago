@@ -2,8 +2,8 @@
 
 ## Required Files
 
-- Wargroove with the Double Trouble DLC installed through Steam on Windows
-  - Only the Steam Windows version is supported. MAC, Switch, Xbox, and Playstation are not supported.
+- Wargroove with the Double Trouble DLC installed through Steam on Windows and Linux
+  - Only the Steam versions on Windows and Linux are supported. MAC, Switch, Xbox, and Playstation are not supported.
 - [The most recent Archipelago release](https://github.com/ArchipelagoMW/Archipelago/releases)
 
 ## Backup playerProgress files
@@ -18,15 +18,25 @@ is strongly recommended in case they become corrupted.
 2. Open the `host.yaml` file in your favorite text editor (Notepad will work).
 3. Put your Wargroove root directory in the `root_directory:` under the `wargroove_options:` section.
    - The Wargroove root directory can be found by going to 
-   `Steam->Right Click Wargroove->Properties->Local Files->Browse Local Files` and copying the path in the address bar.
+   `Steam->Right Click Wargroove->Properties->Installed Files->Browse` and copying the path in the address bar.
    - Paste the path in between the quotes next to `root_directory:` in the `host.yaml`.
    - You may have to replace all single \\ with \\\\.
 4. Start the Wargroove client.
 
+## Linux Only: Select AppData equivalent when starting the client
+1. Shut down Wargroove if it is open.
+2. Start the Archipelago Wargroove Client from the Archipelago Launcher.
+3. A file select dialogue will appear, claiming it cannot detect a path to the AppData folder.
+4. Navigate to your Steam install directory and select .
+`/steamapps/compatdata/607050/pfx/drive_c/users/steamuser/AppData/Roaming` as the save directory.
+5. Using a default Steam install path, the full AppData path is
+`~/.steam/steam/steamapps/compatdata/607050/pfx/drive_c/users/steamuser/AppData/Roaming`.
+6. The client should start.
+
 ## Installing the Archipelago Wargroove Mod and Campaign files
 
 1. Shut down Wargroove if it is open.
-2. Start the ArchipelagoWargrooveClient.exe from the Archipelago installation. 
+2. Start the Archipelago Wargroove Client from the Archipelago Launcher. 
 This should install the mod and campaign for you.
 3. Start Wargroove.
 
@@ -38,7 +48,7 @@ This should install the mod and campaign for you.
 ## Starting a Multiworld game
 
 1. Start the Wargroove Client and connect to the server. Enter your username from your 
-[settings file.](/games/Wargroove/player-settings)
+[options file.](/games/Wargroove/player-options)
 2. Start Wargroove and play the Archipelago campaign by going to `Story->Campaign->Custom->Archipelago`.
 
 ## Ending a Multiworld game

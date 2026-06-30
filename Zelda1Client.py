@@ -13,7 +13,6 @@ from typing import List
 
 import Utils
 from Utils import async_start
-from worlds import lookup_any_location_id_to_name
 from CommonClient import CommonContext, server_loop, gui_enabled, console_loop, ClientCommandProcessor, logger, \
     get_base_parser
 
@@ -21,11 +20,13 @@ from worlds.tloz.Items import item_game_ids
 from worlds.tloz.Locations import location_ids
 from worlds.tloz import Items, Locations, Rom
 
+from settings import get_settings
+
 SYSTEM_MESSAGE_ID = 0
 
-CONNECTION_TIMING_OUT_STATUS = "Connection timing out. Please restart your emulator, then restart Zelda_connector.lua"
-CONNECTION_REFUSED_STATUS = "Connection Refused. Please start your emulator and make sure Zelda_connector.lua is running"
-CONNECTION_RESET_STATUS = "Connection was reset. Please restart your emulator, then restart Zelda_connector.lua"
+CONNECTION_TIMING_OUT_STATUS = "Connection timing out. Please restart your emulator, then restart connector_tloz.lua"
+CONNECTION_REFUSED_STATUS = "Connection Refused. Please start your emulator and make sure connector_tloz.lua is running"
+CONNECTION_RESET_STATUS = "Connection was reset. Please restart your emulator, then restart connector_tloz.lua"
 CONNECTION_TENTATIVE_STATUS = "Initial Connection Made"
 CONNECTION_CONNECTED_STATUS = "Connected"
 CONNECTION_INITIAL_STATUS = "Connection has not been initiated"
@@ -46,7 +47,7 @@ class ZeldaCommandProcessor(ClientCommandProcessor):
             logger.info(f"NES Status: {self.ctx.nes_status}")
 
     def _cmd_toggle_msgs(self):
-        """Toggle displaying messages in bizhawk"""
+        """Toggle displaying messages in EmuHawk"""
         global DISPLAY_MSGS
         DISPLAY_MSGS = not DISPLAY_MSGS
         logger.info(f"Messages are now {'enabled' if DISPLAY_MSGS else 'disabled'}")
@@ -153,7 +154,7 @@ def get_payload(ctx: ZeldaContext):
 
 
 def reconcile_shops(ctx: ZeldaContext):
-    checked_location_names = [lookup_any_location_id_to_name[location] for location in ctx.checked_locations]
+    checked_location_names = [ctx.location_names.lookup_in_game(location) for location in ctx.checked_locations]
     shops = [location for location in checked_location_names if "Shop" in location]
     left_slots = [shop for shop in shops if "Left" in shop]
     middle_slots = [shop for shop in shops if "Middle" in shop]
@@ -191,7 +192,7 @@ async def parse_locations(locations_array, ctx: ZeldaContext, force: bool, zone=
         locations_checked = []
         location = None
         for location in ctx.missing_locations:
-            location_name = lookup_any_location_id_to_name[location]
+            location_name = ctx.location_names.lookup_in_game(location)
 
             if location_name in Locations.overworld_locations and zone == "overworld":
                 status = locations_array[Locations.major_location_offsets[location_name]]
@@ -288,7 +289,7 @@ async def nes_sync_task(ctx: ZeldaContext):
                     if not ctx.auth:
                         ctx.auth = ''.join([chr(i) for i in data_decoded['playerName'] if i != 0])
                         if ctx.auth == '':
-                            logger.info("Invalid ROM detected. No player name built into the ROM. Please regenerate"
+                            logger.info("Invalid ROM detected. No player name built into the ROM. Please regenerate "
                                         "the ROM using the same link but adding your slot name")
                         if ctx.awaiting_rom:
                             await ctx.server_auth(False)
@@ -334,6 +335,7 @@ async def nes_sync_task(ctx: ZeldaContext):
             except ConnectionRefusedError:
                 logger.debug("Connection Refused, Trying Again")
                 ctx.nes_status = CONNECTION_REFUSED_STATUS
+                await asyncio.sleep(1)
                 continue
 
 
@@ -341,13 +343,12 @@ if __name__ == '__main__':
     # Text Mode to use !hint and such with games that have no text entry
     Utils.init_logging("ZeldaClient")
 
-    options = Utils.get_options()
-    DISPLAY_MSGS = options["tloz_options"]["display_msgs"]
+    DISPLAY_MSGS = get_settings()["tloz_options"]["display_msgs"]
 
 
     async def run_game(romfile: str) -> None:
         auto_start = typing.cast(typing.Union[bool, str],
-                                 Utils.get_options()["tloz_options"].get("rom_start", True))
+                                 get_settings()["tloz_options"].get("rom_start", True))
         if auto_start is True:
             import webbrowser
             webbrowser.open(romfile)
@@ -387,7 +388,7 @@ if __name__ == '__main__':
     parser.add_argument('diff_file', default="", type=str, nargs="?",
                         help='Path to a Archipelago Binary Patch file')
     args = parser.parse_args()
-    colorama.init()
+    colorama.just_fix_windows_console()
 
     asyncio.run(main(args))
     colorama.deinit()

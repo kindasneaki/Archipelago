@@ -11,6 +11,7 @@ from typing import List
 
 
 import Utils
+from settings import get_settings
 from NetUtils import ClientStatus
 from Utils import async_start
 from CommonClient import CommonContext, server_loop, gui_enabled, ClientCommandProcessor, logger, \
@@ -25,11 +26,11 @@ from worlds.adventure.Offsets import static_item_element_size, connector_port_of
 SYSTEM_MESSAGE_ID = 0
 
 CONNECTION_TIMING_OUT_STATUS = \
-    "Connection timing out. Please restart your emulator, then restart adventure_connector.lua"
+    "Connection timing out. Please restart your emulator, then restart connector_adventure.lua"
 CONNECTION_REFUSED_STATUS = \
-    "Connection Refused. Please start your emulator and make sure adventure_connector.lua is running"
+    "Connection Refused. Please start your emulator and make sure connector_adventure.lua is running"
 CONNECTION_RESET_STATUS = \
-    "Connection was reset. Please restart your emulator, then restart adventure_connector.lua"
+    "Connection was reset. Please restart your emulator, then restart connector_adventure.lua"
 CONNECTION_TENTATIVE_STATUS = "Initial Connection Made"
 CONNECTION_CONNECTED_STATUS = "Connected"
 CONNECTION_INITIAL_STATUS = "Connection has not been initiated"
@@ -80,8 +81,8 @@ class AdventureContext(CommonContext):
         self.local_item_locations = {}
         self.dragon_speed_info = {}
 
-        options = Utils.get_options()
-        self.display_msgs = options["adventure_options"]["display_msgs"]
+        options = get_settings().adventure_options
+        self.display_msgs = options.display_msgs
 
     async def server_auth(self, password_requested: bool = False):
         if password_requested and not self.password:
@@ -102,7 +103,7 @@ class AdventureContext(CommonContext):
     def on_package(self, cmd: str, args: dict):
         if cmd == 'Connected':
             self.locations_array = None
-            if Utils.get_options()["adventure_options"].get("death_link", False):
+            if get_settings().adventure_options.as_dict().get("death_link", False):
                 self.set_deathlink = True
             async_start(self.get_freeincarnates_used())
         elif cmd == "RoomInfo":
@@ -112,14 +113,15 @@ class AdventureContext(CommonContext):
             if ': !' not in msg:
                 self._set_message(msg, SYSTEM_MESSAGE_ID)
         elif cmd == "ReceivedItems":
-            msg = f"Received {', '.join([self.item_names[item.item] for item in args['items']])}"
+            msg = f"Received {', '.join([self.item_names.lookup_in_game(item.item) for item in args['items']])}"
             self._set_message(msg, SYSTEM_MESSAGE_ID)
         elif cmd == "Retrieved":
-            self.freeincarnates_used = args["keys"][f"adventure_{self.auth}_freeincarnates_used"]
-            if self.freeincarnates_used is None:
-                self.freeincarnates_used = 0
-            self.freeincarnates_used += self.freeincarnate_pending
-            self.send_pending_freeincarnates()
+            if f"adventure_{self.auth}_freeincarnates_used" in args["keys"]:
+                self.freeincarnates_used = args["keys"][f"adventure_{self.auth}_freeincarnates_used"]
+                if self.freeincarnates_used is None:
+                    self.freeincarnates_used = 0
+                self.freeincarnates_used += self.freeincarnate_pending
+                self.send_pending_freeincarnates()
         elif cmd == "SetReply":
             if args["key"] == f"adventure_{self.auth}_freeincarnates_used":
                 self.freeincarnates_used = args["value"]
@@ -396,7 +398,7 @@ async def atari_sync_task(ctx: AdventureContext):
                     ctx.atari_streams = await asyncio.wait_for(
                         asyncio.open_connection("localhost",
                                                 port),
-                                                timeout=10)
+                        timeout=10)
                     ctx.atari_status = CONNECTION_TENTATIVE_STATUS
                 except TimeoutError:
                     logger.debug("Connection Timed Out, Trying Again")
@@ -405,6 +407,7 @@ async def atari_sync_task(ctx: AdventureContext):
                 except ConnectionRefusedError:
                     logger.debug("Connection Refused, Trying Again")
                     ctx.atari_status = CONNECTION_REFUSED_STATUS
+                    await asyncio.sleep(1)
                     continue
                 except CancelledError:
                     pass
@@ -414,8 +417,9 @@ async def atari_sync_task(ctx: AdventureContext):
 
 
 async def run_game(romfile):
-    auto_start = Utils.get_options()["adventure_options"].get("rom_start", True)
-    rom_args = Utils.get_options()["adventure_options"].get("rom_args")
+    options = get_settings().adventure_options
+    auto_start = options.rom_start
+    rom_args = options.rom_args
     if auto_start is True:
         import webbrowser
         webbrowser.open(romfile)
@@ -436,7 +440,7 @@ async def patch_and_run_game(patch_file, ctx):
         logger.info(msg, extra={'compact_gui': True})
         ctx.gui_error('Error', msg)
 
-    with open(Utils.user_path("data", "adventure_basepatch.bsdiff4"), "rb") as file:
+    with open(Utils.local_path("data", "adventure_basepatch.bsdiff4"), "rb") as file:
         basepatch = bytes(file.read())
 
     base_patched_rom_data = bsdiff4.patch(base_rom, basepatch)
@@ -510,7 +514,7 @@ if __name__ == '__main__':
 
     import colorama
 
-    colorama.init()
+    colorama.just_fix_windows_console()
 
     asyncio.run(main())
     colorama.deinit()

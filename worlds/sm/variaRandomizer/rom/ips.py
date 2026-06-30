@@ -1,6 +1,6 @@
-import itertools
+import itertools, math
 
-from worlds.sm.variaRandomizer.utils.utils import range_union
+from ..utils.utils import range_union, openFile
 
 # adapted from ips-util for python 3.2 (https://pypi.org/project/ips-util/)
 class IPS_Patch(object):
@@ -9,23 +9,41 @@ class IPS_Patch(object):
         self.truncate_length = None
         self.max_size = 0
         if patchDict is not None:
+            recMaxSize = 0xffff
             for addr, data in patchDict.items():
-                byteData = bytearray(data)
-                self.add_record(addr, byteData)
+                nrecs = int(math.ceil(float(len(data))/recMaxSize))
+                for i in range(nrecs):
+                    start = i*recMaxSize
+                    end = min((i+1)*recMaxSize, len(data))
+                    byteData = bytearray(data[start:end])
+                    self.add_record(addr+start, byteData)
 
     def toDict(self):
         ret = {}
         for record in self.records:
-            if 'rle_count' in record:
-                ret[record['address']] = [int.from_bytes(record['data'],'little')]*record['rle_count']
+            if record['address'] in ret.keys():
+                if 'rle_count' in record:
+                    if len(ret[record['address']]) > record['rle_count']:
+                        ret[record['address']][:record['rle_count']] = [int.from_bytes(record['data'],'little')]*record['rle_count']
+                    else:
+                        ret[record['address']] = [int.from_bytes(record['data'],'little')]*record['rle_count']
+                else:
+                    size = len(record['data'])
+                    if len(ret[record['address']]) > size:
+                        ret[record['address']][:size] = [int(b) for b in record['data']]  
+                    else:
+                        ret[record['address']] = [int(b) for b in record['data']]            
             else:
-                ret[record['address']] = [int(b) for b in record['data']]
+                if 'rle_count' in record:
+                    ret[record['address']] = [int.from_bytes(record['data'],'little')]*record['rle_count']
+                else:
+                    ret[record['address']] = [int(b) for b in record['data']]
         return ret
 
     @staticmethod
     def load(filename):
         loaded_patch = IPS_Patch()
-        with open(filename, 'rb') as file:
+        with openFile(filename, 'rb') as file:
             header = file.read(5)
             if header != b'PATCH':
                 raise Exception('Not a valid IPS patch file!')

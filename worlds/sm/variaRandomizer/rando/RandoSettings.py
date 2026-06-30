@@ -1,9 +1,8 @@
-
-import sys, random
+import sys
 from collections import defaultdict
-from worlds.sm.variaRandomizer.rando.Items import ItemManager
-from worlds.sm.variaRandomizer.utils.utils import getRangeDict, chooseFromRange
-from worlds.sm.variaRandomizer.rando.ItemLocContainer import ItemLocation
+from ..rando.Items import ItemManager
+from ..utils.utils import getRangeDict, chooseFromRange
+from ..rando.ItemLocContainer import ItemLocation
 
 # Holder for settings and a few utility functions related to them
 # (especially for plando/rando).
@@ -32,11 +31,11 @@ class RandoSettings(object):
     def isPlandoRando(self):
         return self.PlandoOptions is not None
 
-    def getItemManager(self, smbm, nLocs):
+    def getItemManager(self, smbm, nLocs, bossesItems, random):
         if not self.isPlandoRando():
-            return ItemManager(self.restrictions['MajorMinor'], self.qty, smbm, nLocs, self.maxDiff)
+            return ItemManager(self.restrictions['MajorMinor'], self.qty, smbm, nLocs, bossesItems, self.maxDiff, random)
         else:
-            return ItemManager('Plando', self.qty, smbm, nLocs, self.maxDiff)
+            return ItemManager('Plando', self.qty, smbm, nLocs, bossesItems, self.maxDiff, random)
 
     def getExcludeItems(self, locations):
         if not self.isPlandoRando():
@@ -67,7 +66,11 @@ class RandoSettings(object):
 
 # Holds settings and utiliy functions related to graph layout
 class GraphSettings(object):
-    def __init__(self, startAP, areaRando, lightAreaRando, bossRando, escapeRando, minimizerN, dotFile, doorsColorsRando, allowGreyDoors, plandoRandoTransitions):
+    def __init__(self, player, startAP, areaRando, lightAreaRando,
+                 bossRando, escapeRando, minimizerN, dotFile,
+                 doorsColorsRando, allowGreyDoors, tourian,
+                 plandoRandoTransitions):
+        self.player = player
         self.startAP = startAP
         self.areaRando = areaRando
         self.lightAreaRando = lightAreaRando
@@ -77,6 +80,7 @@ class GraphSettings(object):
         self.dotFile = dotFile
         self.doorsColorsRando = doorsColorsRando
         self.allowGreyDoors = allowGreyDoors
+        self.tourian = tourian
         self.plandoRandoTransitions = plandoRandoTransitions
 
     def isMinimizer(self):
@@ -89,7 +93,7 @@ class ProgSpeedParameters(object):
         self.restrictions = restrictions
         self.nLocs = nLocs
 
-    def getVariableSpeed(self):
+    def getVariableSpeed(self, random):
         ranges = getRangeDict({
             'slowest':7,
             'slow':20,
@@ -97,7 +101,7 @@ class ProgSpeedParameters(object):
             'fast':27,
             'fastest':11
         })
-        return chooseFromRange(ranges)
+        return chooseFromRange(ranges, random)
 
     def getMinorHelpProb(self, progSpeed):
         if self.restrictions.split != 'Major':
@@ -122,10 +126,16 @@ class ProgSpeedParameters(object):
         elif progSpeed == 'fastest':
             return 0.33
         return 0
+    
+    # chozo/slowest can make seed generation fail often, not much
+    # of a gameplay difference between slow/slowest in Chozo anyway,
+    # so we merge slow and slowest for some params
+    def isSlow(self, progSpeed):
+        return progSpeed == "slow" or (progSpeed == "slowest" and self.restrictions.split == "Chozo")
 
-    def getItemLimit(self, progSpeed):
+    def getItemLimit(self, progSpeed, random):
         itemLimit = self.nLocs
-        if progSpeed == 'slow':
+        if self.isSlow(progSpeed):
             itemLimit = int(self.nLocs*0.209) # 21 for 105
         elif progSpeed == 'medium':
             itemLimit = int(self.nLocs*0.095) # 9 for 105
@@ -143,7 +153,7 @@ class ProgSpeedParameters(object):
 
     def getLocLimit(self, progSpeed):
         locLimit = -1
-        if progSpeed == 'slow':
+        if self.isSlow(progSpeed):
             locLimit = 1
         elif progSpeed == 'medium':
             locLimit = 2
@@ -158,12 +168,12 @@ class ProgSpeedParameters(object):
         if self.restrictions.isLateDoors():
             progTypes += ['Wave','Spazer','Plasma']
         progTypes.append('Charge')
-        if progSpeed == 'slowest':
+        if progSpeed == 'slowest' and self.restrictions.split != "Chozo":
             return progTypes
         else:
             progTypes.remove('HiJump')
             progTypes.remove('Charge')
-        if progSpeed == 'slow':
+        if self.isSlow(progSpeed):
             return progTypes
         else:
             progTypes.remove('Bomb')

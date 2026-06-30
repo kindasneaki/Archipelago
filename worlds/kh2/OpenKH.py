@@ -5,18 +5,20 @@ import os
 import Utils
 import zipfile
 
-from .Items import item_dictionary_table, CheckDupingItems
-from .Locations import all_locations, SoraLevels, exclusion_table, AllWeaponSlot
-from .Names import LocationName
+from datetime import datetime, UTC
+
+from .Items import item_dictionary_table
+from .Locations import all_locations, SoraLevels, exclusion_table
 from .XPValues import lvlStats, formExp, soraExp
-from worlds.Files import APContainer
+from worlds.Files import APPlayerContainer
 
 
-class KH2Container(APContainer):
+class KH2Container(APPlayerContainer):
     game: str = 'Kingdom Hearts 2'
+    patch_file_ending = ".zip"
 
     def __init__(self, patch_data: dict, base_path: str, output_directory: str,
-                 player=None, player_name: str = "", server: str = ""):
+        player=None, player_name: str = "", server: str = ""):
         self.patch_data = patch_data
         self.file_path = base_path
         container_path = os.path.join(output_directory, base_path + ".zip")
@@ -25,12 +27,6 @@ class KH2Container(APContainer):
     def write_contents(self, opened_zipfile: zipfile.ZipFile) -> None:
         for filename, yml in self.patch_data.items():
             opened_zipfile.writestr(filename, yml)
-        for root, dirs, files in os.walk(os.path.join(os.path.dirname(__file__), "mod_template")):
-            for file in files:
-                opened_zipfile.write(os.path.join(root, file),
-                                     os.path.relpath(os.path.join(root, file),
-                                                     os.path.join(os.path.dirname(__file__), "mod_template")))
-        # opened_zipfile.writestr(self.zpf_path, self.patch_data)
         super().write_contents(opened_zipfile)
 
 
@@ -60,47 +56,44 @@ def patch_kh2(self, output_directory):
     formexp = None
     formName = None
     levelsetting = list()
-    slotDataDuping = set()
-    for values in CheckDupingItems.values():
-        if isinstance(values, set):
-            slotDataDuping = slotDataDuping.union(values)
-        else:
-            for inner_values in values.values():
-                slotDataDuping = slotDataDuping.union(inner_values)
 
-    if self.multiworld.Keyblade_Minimum[self.player].value > self.multiworld.Keyblade_Maximum[self.player].value:
+    if self.options.Keyblade_Minimum.value > self.options.Keyblade_Maximum.value:
         logging.info(
                 f"{self.multiworld.get_file_safe_player_name(self.player)} has Keyblade Minimum greater than Keyblade Maximum")
-        keyblademin = self.multiworld.Keyblade_Maximum[self.player].value
-        keyblademax = self.multiworld.Keyblade_Minimum[self.player].value
+        keyblademin = self.options.Keyblade_Maximum.value
+        keyblademax = self.options.Keyblade_Minimum.value
     else:
-        keyblademin = self.multiworld.Keyblade_Minimum[self.player].value
-        keyblademax = self.multiworld.Keyblade_Maximum[self.player].value
+        keyblademin = self.options.Keyblade_Minimum.value
+        keyblademax = self.options.Keyblade_Maximum.value
 
-    if self.multiworld.LevelDepth[self.player] == "level_50":
+    if self.options.LevelDepth == "level_50":
         levelsetting.extend(exclusion_table["Level50"])
 
-    elif self.multiworld.LevelDepth[self.player] == "level_99":
+    elif self.options.LevelDepth == "level_99":
         levelsetting.extend(exclusion_table["Level99"])
 
-    elif self.multiworld.LevelDepth[self.player] in ["level_50_sanity", "level_99_sanity"]:
+    elif self.options.LevelDepth != "level_1":
         levelsetting.extend(exclusion_table["Level50Sanity"])
 
-        if self.multiworld.LevelDepth[self.player] == "level_99_sanity":
+        if self.options.LevelDepth == "level_99_sanity":
             levelsetting.extend(exclusion_table["Level99Sanity"])
 
-    mod_name = f"AP-{self.multiworld.seed_name}-P{self.player}-{self.multiworld.get_file_safe_player_name(self.player)}"
+    curr_timestamp = datetime.strftime(datetime.now(UTC), "%d%b%Y-%H%M%S")
+    mod_name = f"AP-{self.multiworld.seed_name}-P{self.player}-{self.multiworld.get_file_safe_player_name(self.player)}-{curr_timestamp}"
+    all_valid_locations = {location for location, data in all_locations.items()}
 
     for location in self.multiworld.get_filled_locations(self.player):
-
-        data = all_locations[location.name]
-        if location.item.player == self.player:
-            itemcode = item_dictionary_table[location.item.name].kh2id
-            if location.item.name in slotDataDuping and \
-                    location.name not in AllWeaponSlot:
-                self.LocalItems[location.address] = item_dictionary_table[location.item.name].code
+        if location.name in all_valid_locations:
+            data = all_locations[location.name]
         else:
-            itemcode = 90  # castle map
+            continue
+        if location.item:
+            if location.item.player == self.player:
+                itemcode = item_dictionary_table[location.item.name].kh2id
+            else:
+                itemcode = 90  # castle map
+        else:
+            itemcode = 90
 
         if data.yml == "Chest":
             self.formattedTrsr[data.locid] = {"ItemId": itemcode}
@@ -133,8 +126,8 @@ def patch_kh2(self, output_directory):
         elif data.yml == "Keyblade":
             self.formattedItem["Stats"].append({
                 "Id":                  data.locid,
-                "Attack":              self.multiworld.per_slot_randoms[self.player].randint(keyblademin, keyblademax),
-                "Magic":               self.multiworld.per_slot_randoms[self.player].randint(keyblademin, keyblademax),
+                "Attack":              self.random.randint(keyblademin, keyblademax),
+                "Magic":               self.random.randint(keyblademin, keyblademax),
                 "Defense":             0,
                 "Ability":             itemcode,
                 "AbilityPoints":       0,
@@ -154,11 +147,12 @@ def patch_kh2(self, output_directory):
             if data.locid == 2:
                 formDict = {1: "Valor", 2: "Wisdom", 3: "Limit", 4: "Master", 5: "Final"}
                 formDictExp = {
-                    1: self.multiworld.Valor_Form_EXP[self.player].value,
-                    2: self.multiworld.Wisdom_Form_EXP[self.player].value,
-                    3: self.multiworld.Limit_Form_EXP[self.player].value,
-                    4: self.multiworld.Master_Form_EXP[self.player].value,
-                    5: self.multiworld.Final_Form_EXP[self.player].value}
+                    1: self.options.Valor_Form_EXP.value,
+                    2: self.options.Wisdom_Form_EXP.value,
+                    3: self.options.Limit_Form_EXP.value,
+                    4: self.options.Master_Form_EXP.value,
+                    5: self.options.Final_Form_EXP.value
+                }
                 formexp = formDictExp[data.charName]
                 formName = formDict[data.charName]
                 self.formattedFmlv[formName] = []
@@ -178,31 +172,32 @@ def patch_kh2(self, output_directory):
                 "GrowthAbilityLevel": 0,
             })
 
-    # Summons have no checks on them so done fully locally
+    # Summons have no actual locations so done down here.
     self.formattedFmlv["Summon"] = []
     for x in range(1, 7):
         self.formattedFmlv["Summon"].append({
             "Ability":            123,
-            "Experience":         int(formExp[0][x] / self.multiworld.Summon_EXP[self.player].value),
+            "Experience":         int(formExp[0][x] / self.options.Summon_EXP.value),
             "FormId":             0,
             "FormLevel":          x,
             "GrowthAbilityLevel": 0,
         })
     # levels done down here because of optional settings that can take locations out of the pool.
-    self.i = 1
+    self.i = 2
     for location in SoraLevels:
-        increaseStat(self.multiworld.per_slot_randoms[self.player].randint(0, 3))
+        increaseStat(self.random.randint(0, 3))
         if location in levelsetting:
             data = self.multiworld.get_location(location, self.player)
-            if data.item.player == self.player:
-                itemcode = item_dictionary_table[data.item.name].kh2id
-            else:
-                itemcode = 90  # castle map
+            if data.item:
+                if data.item.player == self.player:
+                    itemcode = item_dictionary_table[data.item.name].kh2id
+                else:
+                    itemcode = 90  # castle map
         else:
-            increaseStat(self.multiworld.per_slot_randoms[self.player].randint(0, 3))
+            increaseStat(self.random.randint(0, 3))
             itemcode = 0
         self.formattedLvup["Sora"][self.i] = {
-            "Exp":           int(soraExp[self.i] / self.multiworld.Sora_Level_EXP[self.player].value),
+            "Exp":           int(soraExp[self.i] / self.options.Sora_Level_EXP.value),
             "Strength":      self.strength,
             "Magic":         self.magic,
             "Defense":       self.defense,
@@ -233,7 +228,257 @@ def patch_kh2(self, output_directory):
             "GeneralResistance":   100,
             "Unknown":             0
         })
+    self.formattedLvup["Sora"][1] = {
+        "Exp":           int(soraExp[1] / self.options.Sora_Level_EXP.value),
+        "Strength":      2,
+        "Magic":         6,
+        "Defense":       2,
+        "Ap":            0,
+        "SwordAbility":  0,
+        "ShieldAbility": 0,
+        "StaffAbility":  0,
+        "Padding":       0,
+        "Character":     "Sora",
+        "Level":         1
+    }
+    self.mod_yml = {
+        "assets": [
+            {
+                'method': 'binarc',
+                'name':   '00battle.bin',
+                'source': [
+                    {
+                        'method': 'listpatch',
+                        'name':   'fmlv',
+                        'source': [
+                            {
+                                'name': 'FmlvList.yml',
+                                'type': 'fmlv'
+                            }
+                        ],
+                        'type':   'List'
+                    },
+                    {
+                        'method': 'listpatch',
+                        'name':   'lvup',
+                        'source': [
+                            {
+                                'name': 'LvupList.yml',
+                                'type': 'lvup'
+                            }
+                        ],
+                        'type':   'List'
+                    },
+                    {
+                        'method': 'listpatch',
+                        'name':   'bons',
+                        'source': [
+                            {
+                                'name': 'BonsList.yml',
+                                'type': 'bons'
+                            }
+                        ],
+                        'type':   'List'
+                    }
+                ]
+            },
+            {
+                'method': 'binarc',
+                'name':   '03system.bin',
+                'source': [
+                    {
+                        'method': 'listpatch',
+                        'name':   'trsr',
+                        'source': [
+                            {
+                                'name': 'TrsrList.yml',
+                                'type': 'trsr'
+                            }
+                        ],
+                        'type':   'List'
+                    },
+                    {
+                        'method': 'listpatch',
+                        'name':   'item',
+                        'source': [
+                            {
+                                'name': 'ItemList.yml',
+                                'type': 'item'
+                            }
+                        ],
+                        'type':   'List'
+                    }
+                ]
+            },
+            {
+                'name':   'msg/us/po.bar',
+                'multi':  [
+                    {
+                        'name': 'msg/fr/po.bar'
+                    },
+                    {
+                        'name': 'msg/gr/po.bar'
+                    },
+                    {
+                        'name': 'msg/it/po.bar'
+                    },
+                    {
+                        'name': 'msg/sp/po.bar'
+                    }
+                ],
+                'method': 'binarc',
+                'source': [
+                    {
+                        'name':   'po',
+                        'type':   'list',
+                        'method': 'kh2msg',
+                        'source': [
+                            {
+                                'name':     'po.yml',
+                                'language': 'en'
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                'name':   'msg/us/sys.bar',
+                'multi':  [
+                    {
+                        'name': 'msg/fr/sys.bar'
+                    },
+                    {
+                        'name': 'msg/gr/sys.bar'
+                    },
+                    {
+                        'name': 'msg/it/sys.bar'
+                    },
+                    {
+                        'name': 'msg/sp/sys.bar'
+                    }
+                ],
+                'method': 'binarc',
+                'source': [
+                    {
+                        'name':   'sys',
+                        'type':   'list',
+                        'method': 'kh2msg',
+                        'source': [
+                            {
+                                'name':     'sys.yml',
+                                'language': 'en'
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                'name':   'msg/us/he.bar',
+                'multi':  [
+                    {
+                        'name': 'msg/fr/he.bar'
+                    },
+                    {
+                        'name': 'msg/gr/he.bar'
+                    },
+                    {
+                        'name': 'msg/it/he.bar'
+                    },
+                    {
+                        'name': 'msg/sp/he.bar'
+                    }
+        ],
+                'method': 'binarc',
+                'source': [
+                    {
+                        'name':   'he',
+                        'type':   'list',
+                        'method': 'kh2msg',
+                        'source': [
+                            {
+                                'name':     'he.yml',
+                                'language': 'en'
+                            }
+                        ]
+                    }
+                ]
+            },
+        ],
+        'title':  'Randomizer Seed'
+    }
+
+    goal_to_text = {
+        0: "Three Proofs",
+        1: "Lucky Emblem",
+        2: "Hitlist",
+        3: "Lucky Emblem and Hitlist",
+    }
+    lucky_emblem_text = {
+        0: "Your Goal is not Lucky Emblem. It is Hitlist or Three Proofs.",
+        1: f"Lucky Emblem Required: {self.options.LuckyEmblemsRequired} out of {self.options.LuckyEmblemsAmount}",
+        2: "Your Goal is not Lucky Emblem. It is Hitlist or Three Proofs.",
+        3: f"Lucky Emblem Required: {self.options.LuckyEmblemsRequired} out of {self.options.LuckyEmblemsAmount}"
+    }
+    hitlist_text = {
+        0: "Your Goal is not Hitlist. It is Lucky Emblem or Three Proofs",
+        1: "Your Goal is not Hitlist. It is Lucky Emblem or Three Proofs",
+        2: f"Bounties Required: {self.options.BountyRequired} out of {self.options.BountyAmount}",
+        3: f"Bounties Required: {self.options.BountyRequired} out of {self.options.BountyAmount}",
+    }
+
+    self.pooh_text = [
+        {
+            'id': 18326,
+            'en': f"Your goal is {goal_to_text[self.options.Goal.value]}"
+        },
+        {
+            'id': 18327,
+            'en': lucky_emblem_text[self.options.Goal.value]
+        },
+        {
+            'id': 18328,
+            'en': hitlist_text[self.options.Goal.value]
+        }
+    ]
+    self.level_depth_text = [
+        {
+            'id': 0x3BF1,
+            'en': f"Your Level Depth is {self.options.LevelDepth.current_option_name}"
+        }
+    ]
+    self.fight_and_form_text = [
+        {
+            'id': 15121,  # poster name
+            'en': f"Game Options"
+        },
+        {
+            'id': 15122,
+            'en': f"Fight Logic is {self.options.FightLogic.current_option_name}\n"
+                  f"Auto Form Logic is {self.options.AutoFormLogic.current_option_name}\n"
+                  f"Final Form Logic is {self.options.FinalFormLogic.current_option_name}"
+        }
+
+    ]
+    self.cups_text = [
+        {
+            'id': 4043,
+            'en': f"CupsToggle: {self.options.Cups.current_option_name}"
+        },
+        {
+            'id': 4044,
+            'en': f"CupsToggle: {self.options.Cups.current_option_name}"
+        },
+        {
+            'id': 4045,
+            'en': f"CupsToggle: {self.options.Cups.current_option_name}"
+        },
+    ]
+
     mod_dir = os.path.join(output_directory, mod_name + "_" + Utils.__version__)
+
+    self.mod_yml["title"] = f"Archipelago Seed - {self.multiworld.get_file_safe_player_name(self.player)}"
+    self.mod_yml["originalAuthor"] = "JaredWeakStrike"
+    self.mod_yml["description"] = f"Seed {self.multiworld.seed_name} was generated for {self.multiworld.get_file_safe_player_name(self.player)} - Player {self.player} at {curr_timestamp} UTC. Have fun! \nCredit to delilahisdidi for the icons!"
 
     openkhmod = {
         "TrsrList.yml": yaml.dump(self.formattedTrsr, line_break="\n"),
@@ -241,8 +486,50 @@ def patch_kh2(self, output_directory):
         "BonsList.yml": yaml.dump(self.formattedBons, line_break="\n"),
         "ItemList.yml": yaml.dump(self.formattedItem, line_break="\n"),
         "FmlvList.yml": yaml.dump(self.formattedFmlv, line_break="\n"),
+        "mod.yml":      yaml.dump(self.mod_yml, line_break="\n"),
+        "po.yml":       yaml.dump(self.pooh_text, line_break="\n"),
+        "sys.yml":      yaml.dump(self.level_depth_text + self.fight_and_form_text, line_break="\n"),
+        "he.yml":       yaml.dump(self.cups_text, line_break="\n")
     }
 
+    ## I think I overlooked a really easy way to find the data folder,
+    ## but it has to determine if it's a local client generating,
+    ## if it's a server generating, if it's a build, or on the complete
+    ## offchance that it's a custom world.
+
+    iconbytes = bytes()
+    previewbytes = bytes()
+    # local build/server generating
+    apworldloc = os.path.join("worlds","kh2","data")
+    if os.path.exists(apworldloc):
+        try:
+            with open(os.path.join(apworldloc, "khapicon.png"),'rb') as icon, \
+                 open(os.path.join(apworldloc, "preview.png"),'rb') as preview:
+                iconbytes = icon.read()
+                previewbytes = preview.read()
+            openkhmod["icon.png"] = iconbytes
+            openkhmod["preview.png"] = previewbytes
+        except IOError as openerror:
+            logging.warning(openerror)
+
+    # client install generating
+    apworldloc = os.path.join("lib","worlds")
+    if not os.path.isfile(Utils.user_path(apworldloc, 'kh2.apworld')): 
+        apworldloc = os.path.join("custom_worlds", "")
+    if os.path.exists(os.path.join(apworldloc,"kh2.apworld")):
+        try: 
+            with zipfile.ZipFile(Utils.user_path(os.path.join(
+                                 apworldloc, 'kh2.apworld')), 'r') as apworld_archive:
+                # zipfile requires the forward slash
+                with apworld_archive.open('kh2/data/khapicon.png', 'r') as icon, \
+                     apworld_archive.open('kh2/data/preview.png', 'r') as preview:
+                    iconbytes = icon.read()
+                    previewbytes = preview.read()
+                openkhmod["icon.png"] = iconbytes
+                openkhmod["preview.png"] = previewbytes
+        except IOError as openerror:
+            logging.warning(openerror)
+
     mod = KH2Container(openkhmod, mod_dir, output_directory, self.player,
-                       self.multiworld.get_file_safe_player_name(self.player))
+            self.multiworld.get_file_safe_player_name(self.player))
     mod.write()

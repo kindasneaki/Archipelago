@@ -1,64 +1,111 @@
 # Kingdom Hearts 2
 
-<h2 style="text-transform:none";>Changes from the vanilla game</h2>
+## Changes from the vanilla game
 
-This randomizer takes Kingdom Hearts 2 and randomizes the locations of the items for a more dynamic play experience. The items that randomize currently are all items within Chests, Popups, Get Bonuses, Form Levels, and Sora's Levels. This allows abilities that Sora would normally have to also be placed on Keyblades with random stats. With several options on ways to finish the game.
+This randomizer creates a more dynamic play experience by randomizing the locations of most items in Kingdom Hearts 2. Currently all items within Chests, Popups, Get Bonuses, Form Levels, Summon Levels,and Sora's Levels are randomized. This allows abilities that Sora would normally have to be placed on Keyblades with random stats. Additionally, there are several options for ways to finish the game, allowing for different goals beyond beating the final boss.
 
-<h2 style="text-transform:none";>Where is the settings page</h2>
+## Where is the options page
 
-The [player settings page for this game](../player-settings) contains all the options you need to configure and export a config file.
-
-
-<h2 style="text-transform:none";>What is randomized in this game?</h2>
+The [player options page for this game](../player-options) contains all the options you need to configure and export a config file.
 
 
-The Chests, Popups, Get Bonuses, Form Levels, and Sora's Levels.
-
-<h2 style="text-transform:none";>What Kingdom Hearts 2 items can appear in other players' worlds?</h2>
+## What is randomized in this game?
 
 
-Every item in the game with the exception being party members' abilities.
+- Chests
+- Popups
+- Get Bonuses
+- Form Levels
+- Summon Levels
+- Sora's Levels
+- Keyblade Stats
+- Keyblade Abilities
 
-<h2 style="text-transform:none";>What is The Garden of Assemblage "GoA"?</h2>
+## What Kingdom Hearts 2 items can appear in other players' worlds?
+
+
+Every item in the game except for abilities on weapons.
+
+## What is The Garden of Assemblage "GoA"?
 
 
 The Garden of Assemblage Mod made by Sonicshadowsilver2 and Num turns the Garden of Assemblage into a “World Hub” where each portal takes you to one of the game worlds (as opposed to having a world map). This allows you to enter worlds at any time, and world progression is maintained for each world individually.
 
-<h2 style="text-transform:none";>What does another world's item look like in Kingdom Hearts 2?</h2>
+## What does another world's item look like in Kingdom Hearts 2?
 
 
 In Kingdom Hearts 2, items which need to be sent to other worlds appear in any location that has a item in the vanilla game. They are represented by the Archipelago icon, and must be "picked up" as if it were a normal item. Upon obtaining the item, it will be sent to its home world.
 
-<h2 style="text-transform:none";>When the player receives an item, what happens?</h2>
+## When the player receives an item, what happens?
 
 
-It is added to your inventory. If you obtain magic, you will need to pause your game to have it show up in your inventory, then enter a new room for it to become properly usable.
+It is added to your inventory.
 
-<h2 style="text-transform:none";>What Happens if I die before Room Saving?</h2>
-
-
-When you die in Kingdom Hearts 2, you are reverted to the last non-boss room you entered and your status is reverted to what it was at that time. However, in archipelago, any item that you have sent/received will not be taken away from the player, any chest you have opened will remain open, and you will keep your level but lose the expereince. Unlike vanilla Kingdom Hearts 2.
+## What Happens if I die before Room Saving?
 
 
-For example, if you are fighting Roxas and you receive Reflect Element and you die fighting Roxas, you will keep that reflect. You will still need to pause your game to have it show up in your inventory, then enter a new room for it to become properly usable.
+When you die in vanilla Kingdom Hearts 2, you are reverted to the last non-boss room you entered and your status is reverted to what it was at that time. However, in archipelago, any item that you have sent/received will not be taken away from the player, any chest you have opened will remain open, and you will keep your level, but lose the experience.
 
-<h2 style="text-transform:none";>Customization options:</h2>
+
+For example, if you are fighting Roxas, receive Reflect Element, then die mid-fight, you will keep that Reflect Element. You will still need to pause your game to have it show up in your inventory, then enter a new room for it to become properly usable.
+
+## Customization options:
 
 
 - Choose a goal from the list below (with an additional option to Kill Final Xemnas alongside your goal).
     1. Obtain Three Proofs.
     2. Obtain a desired amount of Lucky Emblems.
     3. Obtain a desired amount of Bounties that are on late locations.
-- Customize how many World Locking Items You Need to Progress in that World.
-- Customize the Amount of World Locking Items You Start With.
-- Customize how many locations you want on Sora's Levels.
-- Customize the EXP Multiplier of everything that affects Sora.
-- Customize the Available Abilities on Keyblades.
-- Customize the level of Progressive Movement (Growth Abilities) you start with.
-- Customize the amount of Progressive Movement (Growth Abilities) you start with.
+- Customize how many World-Locking Items you need to progress in that world.
+- Customize the amount of World-Locking Items you start with.
+- Customize how many of Sora's Levels are locations.
+- Customize the EXP multiplier for Sora, his Drive Forms, and his Summons.
+- Customize the available abilities on keyblades.
+- Customize the amount and level of progressive movement (Growth Abilities) you start with.
 - Customize start inventory, i.e., begin every run with certain items or spells of your choice.
 
-<h2 style="text-transform:none";>Quality of life:</h2>
+## What are Lucky Emblems?
+Lucky Emblems are items that are required to beat the game if your goal is "Lucky Emblem Hunt".<br>
+You can think of these as requiring X number of Proofs of Nonexistence to open the final door.
+
+## What is Hitlist/Bounties?
+The Hitlist goal adds "bounty" items to select late-game fights and locations, and you need to collect X number of them to win.<br>
+The list of possible locations that can contain a bounty:
+
+- Each of the 13 Data Fights
+- Max level (7) for each Drive Form
+- Max level (7) of Summons
+- Last song of Atlantica
+- Sephiroth
+- Lingering Will
+- Starry Hill
+- Transport to Remembrance
+- Goddess of Fate cup and Hades Paradox cup
+
+For players looking for a more casual experience with the Hitlist goal, there is an "Add Casual Bounties" option to introduce more bounty locations.<br>
+The list of possible bounty locations that get added with this setting enabled:
+
+- Future Pete
+- TT3 Bond of Flame
+- Grim Reaper 2
+- 1000 Heartless
+- Winner's Proof
+- Experiment
+- Groundshaker
+- Hades
+- Genie Jafar
+- Xaldin
+- Storm Rider
+- MCP
+- STT Post Axel 2 Chest
+- Xemnas 1
+- Xigbar
+- Level 50 (Depending on choice of level checks.)
+- Level 99 (Depending on choice of level checks.)
+
+For those who only want the casual bounty locations, you can effectively disable the normal bounty locations by excluding the "General Bounties" location group.
+
+## Quality of life:
 
 
 With the help of Shananas, Num, and ZakTheRobot we have many QoL features such are:
@@ -66,42 +113,34 @@ With the help of Shananas, Num, and ZakTheRobot we have many QoL features such a
 
 - Faster Wardrobe.
 - Faster Water Jafar Chase.
+- Faster Bulky Vendors
 - Carpet Skip.
 - Start with Lion Dash.
 - Faster Urns.
 - Removal of Absent Silhouette and go straight into the Data Fights.
 - And much more can be found at [Kingdom Hearts 2 GoA Overview](https://tommadness.github.io/KH2Randomizer/overview/)
 
-<h2 style="text-transform:none";>Recommendation</h2>
+## What does each mod do?
 
-- Recommended making a save at the start of the GoA before opening anything. This will be the recommended file to load if/when your game crashes.
-    - If you don't want to have a save in the GoA. Disconnect the client, load the auto save, and then reconnect the client after it loads the auto save.
-- Recommended to set fps limit to 60fps.
-- Recommended to run the game in windows/borderless windowed mode. Fullscreen is stable but the game can crash if you alt-tab out.
-- Recommend viewing [Requirements/logic sheet](https://docs.google.com/spreadsheets/d/1Embae0t7pIrbzvX-NRywk7bTHHEvuFzzQBUUpSUL7Ak/edit?usp=sharing)
-
-<h2 style="text-transform:none";>F.A.Q.</h2>
-
-- Why am I not getting magic?
-    - If you obtain magic, you will need to pause your game to have it show up in your inventory, then enter a new room for it to become properly usable.
-- Why am I missing worlds/portals in the GoA?
-    - You are missing the required visit locking item to access the world/portal.
-- What versions of Kingdom Hearts 2 are supported?
-    - Currently `only` the most up to date version on the Epic Game Store is supported `1.0.0.8_WW`. Emulator may be added in the future.
-- Why did I crash?
-    - The port of Kingdom Hearts 2 can and will randomly crash, this is the fault of the game not the randomizer or the archipelago client.
-      - If you have a continuous/constant crash (in the same area/event every time) you will want to reverify your installed files. This can be done by doing the following: Open Epic Game Store --> Library --> Click Triple Dots --> Manage --> Verify
-- Why am I getting dummy items or letters?
-    - You will need to get the `JaredWeakStrike/APCompanion` (you can find how to get this in the setup guide)
-- Why is my HP/MP continuously increasing without stopping?
-    - You do not have `JaredWeakStrike/APCompanion` setup correctly. Make Sure it is above the GOA in the mod manager.
-- Why am I not sending or receiving items?
-    - Make sure you are connected to the KH2 client and the correct room (for more information reference the setup guide)
-- Why did I not load in to the correct visit
-    - You need to trigger a cutscene or visit The World That Never Was for it to update you have recevied the item.
-- Why should I install the auto save mod at `KH2FM-Mods-equations19/auto-save`?
-    - Because Kingdom Hearts 2 is prone to crashes and will keep you from losing your progress.
-- How do I load an auto save?
-    - To load an auto-save, hold down the Select or your equivalent on your prefered controller while choosing a file. Make sure to hold the button down the whole time.
-- How do I do a soft reset?
-    - Hold L1+L2+R1+R2+Start or your equivalent on your prefered controller at the same time to immediately reset the game to the start screen.
+1. Archipelago Companion:
+- This mod under the hood is a collection of smaller mods that change things such as item icons and specific things in the GOA that make it work better for archipelago.
+This mod needs to be above the GOA because it has to overwrite the GOA lua script with its own for things to work according to the client. Such as giving you consumable items
+I.E potions, ethers, boosts etc.
+- This mod also has some consistent mods that should always be on such as Port Royal Map Skip, Better STT and Allowing you to enter drive forms where you shouldnt normally be able to (Dive to the Heart before Data Fights, 100 Acre Woods) Credit to KSX on nexus mods for the basis of the script that does this that was changed for it to work in AP.
+- Changes The Absent Silhouettes to be the data version instead of how it works traditionally where you would defeat the absent silhouette version to unlock the data fight using the same entry point.
+- The biggest misconception is that the APCompanion is the client/connects to the server like other game's companions mod. This is not the case. The apcompanion is mainly a collection of static modifications that were taken out of the apworld to reduce seed size.
+- There are many little things this mod does so if you have any questions feel free to ping me (@JaredWeakStrike) in the archipelago discord and I can hopefully answer your question.
+2. TopazTK/ArchipelagoEnablers
+- This is in sense another companion mod and is required for many things to work correctly.
+- Notification System: Allows the client to flip a byte in game for it to trigger a puzzle piece popup/information popup/chest popup
+- Deathlink: Allows the client to flip a byte to kill sora when the client sets sora's hp to 0 (normally it doesnt kill sora when his hp is set to 0)
+- Instant Movement: No need to pause when you obtain movement for it to update.
+- Instant Magic: No need to room transition to update magic
+- Autosave: Creates a save file in slot 99 that is treated like a normal save file. It is made on room transition. Do note: it does overwrite any save in slot 99
+- Soft Reset: All shoulder buttons+start. For ds4 its L1+l2+R1+R2+Options for example
+3. TopazTK/ArchipelagoEnablersLITE
+- Everything in Archipelago Enablers EXCEPT auto save and soft reset
+- This mod is to be used with H2FM-Mods-equations19/auto-save or H2FM-Mods-equations19/soft-reset
+- Both equations' mods require KH2FM-Mods-equations19/KH2-Lua-Library
+- equations19/soft-reset: Use all shoulder buttons+start to reset 
+- equations19/auto-save: To load an auto-save, hold down the Select or your equivalent on your preferred controller while choosing a NO PROGRESS save file i.e. A save file that is at the start of the game and has no progress made. Make sure to hold the button down the whole time.

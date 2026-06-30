@@ -1,25 +1,25 @@
 
-import copy, time, random
-from worlds.sm.variaRandomizer.utils import log
-from worlds.sm.variaRandomizer.logic.cache import RequestCache
-from worlds.sm.variaRandomizer.rando.RandoServices import RandoServices
-from worlds.sm.variaRandomizer.rando.Choice import ItemThenLocChoice
-from worlds.sm.variaRandomizer.rando.RandoServices import ComebackCheckType
-from worlds.sm.variaRandomizer.rando.ItemLocContainer import ItemLocation, getItemLocationsStr
-from worlds.sm.variaRandomizer.utils.parameters import infinity
-from worlds.sm.variaRandomizer.logic.helpers import diffValue2txt
-from worlds.sm.variaRandomizer.graph.graph_utils import GraphUtils
+import copy, time
+from ..utils import log
+from ..logic.cache import RequestCache
+from ..rando.RandoServices import RandoServices
+from ..rando.Choice import ItemThenLocChoice
+from ..rando.RandoServices import ComebackCheckType
+from ..rando.ItemLocContainer import ItemLocation, getItemLocationsStr
+from ..utils.parameters import infinity
+from ..logic.helpers import diffValue2txt
+from ..graph.graph_utils import GraphUtils
 
 # base class for fillers. a filler responsibility is to fill a given
 # ItemLocContainer while a certain condition is fulfilled (usually
 # item pool is not empty).
 # entry point is generateItems
 class Filler(object):
-    def __init__(self, startAP, graph, restrictions, emptyContainer, endDate=infinity):
+    def __init__(self, startAP, graph, restrictions, emptyContainer, endDate=infinity, *, random):
         self.startAP = startAP
         self.cache = RequestCache()
         self.graph = graph
-        self.services = RandoServices(graph, restrictions, self.cache)
+        self.services = RandoServices(graph, restrictions, self.cache, random=random)
         self.restrictions = restrictions
         self.settings = restrictions.settings
         self.endDate = endDate
@@ -108,9 +108,9 @@ class Filler(object):
 
 # very simple front fill algorithm with no rollback and no "softlock checks" (== dessy algorithm)
 class FrontFiller(Filler):
-    def __init__(self, startAP, graph, restrictions, emptyContainer, endDate=infinity):
-        super(FrontFiller, self).__init__(startAP, graph, restrictions, emptyContainer, endDate)
-        self.choice = ItemThenLocChoice(restrictions)
+    def __init__(self, startAP, graph, restrictions, emptyContainer, endDate=infinity, *, random):
+        super(FrontFiller, self).__init__(startAP, graph, restrictions, emptyContainer, endDate, random=random)
+        self.choice = ItemThenLocChoice(restrictions, random)
         self.stdStart = GraphUtils.isStandardStart(self.startAP)
 
     def isEarlyGame(self):

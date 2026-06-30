@@ -1,15 +1,44 @@
 import os
 import sys
 import subprocess
+import multiprocessing
 import warnings
 
+
+if sys.platform in ("win32", "darwin") and not (3, 11, 9) <= sys.version_info < (3, 14, 0):
+    # Official micro version updates. This should match the number in docs/running from source.md.
+    raise RuntimeError(f"Incompatible Python Version found: {sys.version_info}. "
+                       "Official 3.11.9 through 3.13.x is supported.")
+elif sys.platform in ("win32", "darwin") and sys.version_info < (3, 11, 13):
+    # There are known security issues, but no easy way to install fixed versions on Windows for testing.
+    warnings.warn(f"Python Version {sys.version_info} has security issues. Don't use in production.")
+elif not (3, 11, 0) <= sys.version_info < (3, 14, 0):
+    # Other platforms may get security backports instead of micro updates, so the number is unreliable.
+    raise RuntimeError(f"Incompatible Python Version found: {sys.version_info}. 3.11.0 through 3.13.x is supported.")
+
+# don't run update if environment is frozen/compiled or if not the parent process (skip in subprocess)
+_skip_update = bool(
+    getattr(sys, "frozen", False) or 
+    multiprocessing.parent_process() or 
+    os.environ.get("SKIP_REQUIREMENTS_UPDATE", "").lower() in ("1", "true", "yes")
+)
+update_ran = _skip_update
+
+
+class RequirementsSet(set):
+    def add(self, e):
+        global update_ran
+        update_ran &= _skip_update
+        super().add(e)
+
+    def update(self, *s):
+        global update_ran
+        update_ran &= _skip_update
+        super().update(*s)
+
+
 local_dir = os.path.dirname(__file__)
-requirements_files = {os.path.join(local_dir, 'requirements.txt')}
-
-if sys.version_info < (3, 8, 6):
-    raise RuntimeError("Incompatible Python Version. 3.8.7+ is supported.")
-
-update_ran = getattr(sys, "frozen", False)  # don't run update if environment is frozen/compiled
+requirements_files = RequirementsSet((os.path.join(local_dir, 'requirements.txt'),))
 
 if not update_ran:
     for entry in os.scandir(os.path.join(local_dir, "worlds")):
@@ -46,33 +75,42 @@ def update_command():
 def install_pkg_resources(yes=False):
     try:
         import pkg_resources  # noqa: F401
-    except ImportError:
+    except (AttributeError, ImportError):
         check_pip()
         if not yes:
             confirm("pkg_resources not found, press enter to install it")
-        subprocess.call([sys.executable, "-m", "pip", "install", "--upgrade", "setuptools"])
+        subprocess.call([sys.executable, "-m", "pip", "install", "--upgrade", "setuptools>=75,<81"])
 
 
-def update(yes=False, force=False):
+def update(yes: bool = False, force: bool = False) -> None:
     global update_ran
     if not update_ran:
         update_ran = True
+
+        install_pkg_resources(yes=yes)
+        import pkg_resources
 
         if force:
             update_command()
             return
 
-        install_pkg_resources(yes=yes)
-        import pkg_resources
-
+        prev = ""  # if a line ends in \ we store here and merge later
         for req_file in requirements_files:
             path = os.path.join(os.path.dirname(sys.argv[0]), req_file)
             if not os.path.exists(path):
                 path = os.path.join(os.path.dirname(__file__), req_file)
             with open(path) as requirementsfile:
                 for line in requirementsfile:
-                    if not line or line[0] == "#":
-                        continue  # ignore comments
+                    if not line or line.lstrip(" \t")[0] == "#":
+                        if not prev:
+                            continue  # ignore comments
+                        line = ""
+                    elif line.rstrip("\r\n").endswith("\\"):
+                        prev = prev + line.rstrip("\r\n")[:-1] + " "  # continue on next line
+                        continue
+                    line = prev + line
+                    line = line.split("--hash=")[0]  # remove hashes from requirement for version checking
+                    prev = ""
                     if line.startswith(("https://", "git+https://")):
                         # extract name and version for url
                         rest = line.split('/')[-1]

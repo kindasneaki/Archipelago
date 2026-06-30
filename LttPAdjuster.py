@@ -14,7 +14,7 @@ import tkinter as tk
 from argparse import Namespace
 from concurrent.futures import as_completed, ThreadPoolExecutor
 from glob import glob
-from tkinter import Tk, Frame, Label, StringVar, Entry, filedialog, messagebox, Button, Radiobutton, LEFT, X, TOP, LabelFrame, \
+from tkinter import Tk, Frame, Label, StringVar, Entry, filedialog, messagebox, Button, Radiobutton, LEFT, X, BOTH, TOP, LabelFrame, \
     IntVar, Checkbutton, E, W, OptionMenu, Toplevel, BOTTOM, RIGHT, font as font, PhotoImage
 from tkinter.constants import DISABLED, NORMAL
 from urllib.parse import urlparse
@@ -25,17 +25,23 @@ ModuleUpdate.update()
 
 from worlds.alttp.Rom import Sprite, LocalRom, apply_rom_settings, get_base_rom_bytes
 from Utils import output_path, local_path, user_path, open_file, get_cert_none_ssl_context, persistent_store, \
-    get_adjuster_settings, tkinter_center_window, init_logging
+    get_adjuster_settings, get_adjuster_settings_no_defaults, tkinter_center_window, init_logging
 
 
 GAME_ALTTP = "A Link to the Past"
+WINDOW_MIN_HEIGHT = 525
+WINDOW_MIN_WIDTH = 425
 
 
 class AdjusterWorld(object):
+    class AdjusterSubWorld(object):
+        def __init__(self, random):
+            self.random = random
+
     def __init__(self, sprite_pool):
         import random
         self.sprite_pool = {1: sprite_pool}
-        self.per_slot_randoms = {1: random}
+        self.worlds = {1: self.AdjusterSubWorld(random)}
 
 
 class ArgumentDefaultsHelpFormatter(argparse.RawTextHelpFormatter):
@@ -44,7 +50,49 @@ class ArgumentDefaultsHelpFormatter(argparse.RawTextHelpFormatter):
         return textwrap.dedent(action.help)
 
 
-def main():
+# See argparse.BooleanOptionalAction
+class BooleanOptionalActionWithDisable(argparse.Action):
+    def __init__(self,
+                 option_strings,
+                 dest,
+                 default=None,
+                 type=None,
+                 choices=None,
+                 required=False,
+                 help=None,
+                 metavar=None):
+
+        _option_strings = []
+        for option_string in option_strings:
+            _option_strings.append(option_string)
+
+            if option_string.startswith('--'):
+                option_string = '--disable' + option_string[2:]
+                _option_strings.append(option_string)
+
+        if help is not None and default is not None:
+            help += " (default: %(default)s)"
+
+        super().__init__(
+            option_strings=_option_strings,
+            dest=dest,
+            nargs=0,
+            default=default,
+            type=type,
+            choices=choices,
+            required=required,
+            help=help,
+            metavar=metavar)
+
+    def __call__(self, parser, namespace, values, option_string=None):
+        if option_string in self.option_strings:
+            setattr(namespace, self.dest, not option_string.startswith('--disable'))
+
+    def format_usage(self):
+        return ' | '.join(self.option_strings)
+
+
+def get_argparser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
 
     parser.add_argument('rom', nargs="?", default='AP_LttP.sfc', help='Path to an ALttP rom to adjust.')
@@ -52,6 +100,8 @@ def main():
                         help='Path to an ALttP Japan(1.0) rom to use as a base.')
     parser.add_argument('--loglevel', default='info', const='info', nargs='?',
                         choices=['error', 'info', 'warning', 'debug'], help='Select level of logging for output.')
+    parser.add_argument('--auto_apply', default='ask',
+                        choices=['ask', 'always', 'never'], help='Whether or not to apply settings automatically in the future.')
     parser.add_argument('--menuspeed', default='normal', const='normal', nargs='?',
                         choices=['normal', 'instant', 'double', 'triple', 'quadruple', 'half'],
                         help='''\
@@ -61,7 +111,7 @@ def main():
     parser.add_argument('--quickswap', help='Enable quick item swapping with L and R.', action='store_true')
     parser.add_argument('--deathlink', help='Enable DeathLink system.', action='store_true')
     parser.add_argument('--allowcollect', help='Allow collection of other player items', action='store_true')
-    parser.add_argument('--disablemusic', help='Disables game music.', action='store_true')
+    parser.add_argument('--music', default=True, help='Enables/Disables game music.', action=BooleanOptionalActionWithDisable)
     parser.add_argument('--triforcehud', default='hide_goal', const='hide_goal', nargs='?',
                         choices=['normal', 'hide_goal', 'hide_required', 'hide_both'],
                         help='''\
@@ -85,9 +135,6 @@ def main():
     parser.add_argument('--ow_palettes', default='default',
                         choices=['default', 'random', 'blackout', 'puke', 'classic', 'grayscale', 'negative', 'dizzy',
                                  'sick'])
-    # parser.add_argument('--link_palettes', default='default',
-    #                     choices=['default', 'random', 'blackout', 'puke', 'classic', 'grayscale', 'negative', 'dizzy',
-    #                              'sick'])
     parser.add_argument('--shield_palettes', default='default',
                         choices=['default', 'random', 'blackout', 'puke', 'classic', 'grayscale', 'negative', 'dizzy',
                                  'sick'])
@@ -107,10 +154,23 @@ def main():
                              Alternatively, can be a ALttP Rom patched with a Link
                              sprite that will be extracted.
                              ''')
-    parser.add_argument('--names', default='', type=str)
+    parser.add_argument('--sprite_pool', nargs='+', default=[], help='''
+                             A list of sprites to pull from.
+                        ''')
+    parser.add_argument('--oof', help='''\
+                             Path to a sound effect to replace Link's "oof" sound.
+                             Needs to be in a .brr format and have a length of no
+                             more than 2673 bytes, created from a 16-bit signed PCM
+                             .wav at 12khz. https://github.com/boldowa/snesbrr
+                             ''')
     parser.add_argument('--update_sprites', action='store_true', help='Update Sprite Database, then exit.')
-    args = parser.parse_args()
-    args.music = not args.disablemusic
+    return parser
+
+
+def main():
+    parser = get_argparser()
+    args = parser.parse_args(namespace=get_adjuster_settings_no_defaults(GAME_ALTTP))
+    
     # set up logger
     loglevel = {'error': logging.ERROR, 'info': logging.INFO, 'warning': logging.WARNING, 'debug': logging.DEBUG}[
         args.loglevel]
@@ -126,6 +186,13 @@ def main():
         if args.sprite is not None and not os.path.isfile(args.sprite) and not Sprite.get_sprite_from_name(args.sprite):
             input('Could not find link sprite sheet at given location. \nPress Enter to exit.')
             sys.exit(1)
+        if args.oof is not None and not os.path.isfile(args.oof):
+            input('Could not find oof sound effect at given location. \nPress Enter to exit.')
+            sys.exit(1)
+        if args.oof is not None and os.path.getsize(args.oof) > 2673:
+            input('"oof" sound effect cannot exceed 2673 bytes. \nPress Enter to exit.')
+            sys.exit(1)
+            
 
         args, path = adjust(args=args)
         if isinstance(args.sprite, Sprite):
@@ -165,7 +232,7 @@ def adjust(args):
         world = getattr(args, "world")
 
     apply_rom_settings(rom, args.heartbeep, args.heartcolor, args.quickswap, args.menuspeed, args.music,
-                       args.sprite, palettes_options, reduceflashing=args.reduceflashing or racerom, world=world,
+                       args.sprite, args.oof, palettes_options, reduceflashing=args.reduceflashing or racerom, world=world,
                        deathlink=args.deathlink, allowcollect=args.allowcollect)
     path = output_path(f'{os.path.basename(args.rom)[:-4]}_adjusted.sfc')
     rom.write_to_file(path)
@@ -180,18 +247,19 @@ def adjustGUI():
     from tkinter import Tk, LEFT, BOTTOM, TOP, \
         StringVar, Frame, Label, X, Entry, Button, filedialog, messagebox, ttk
     from argparse import Namespace
-    from Main import __version__ as MWVersion
+    from Utils import __version__ as MWVersion
     adjustWindow = Tk()
+    adjustWindow.minsize(WINDOW_MIN_WIDTH, WINDOW_MIN_HEIGHT)
     adjustWindow.wm_title("Archipelago %s LttP Adjuster" % MWVersion)
     set_icon(adjustWindow)
 
     rom_options_frame, rom_vars, set_sprite = get_rom_options_frame(adjustWindow)
 
-    bottomFrame2 = Frame(adjustWindow)
+    bottomFrame2 = Frame(adjustWindow, padx=8, pady=2)
 
     romFrame, romVar = get_rom_frame(adjustWindow)
 
-    romDialogFrame = Frame(adjustWindow)
+    romDialogFrame = Frame(adjustWindow, padx=8, pady=2)
     baseRomLabel2 = Label(romDialogFrame, text='Rom to adjust')
     romVar2 = StringVar()
     romEntry2 = Entry(romDialogFrame, textvariable=romVar2)
@@ -201,9 +269,9 @@ def adjustGUI():
         romVar2.set(rom)
 
     romSelectButton2 = Button(romDialogFrame, text='Select Rom', command=RomSelect2)
-    romDialogFrame.pack(side=TOP, expand=True, fill=X)
-    baseRomLabel2.pack(side=LEFT)
-    romEntry2.pack(side=LEFT, expand=True, fill=X)
+    romDialogFrame.pack(side=TOP, expand=False, fill=X)
+    baseRomLabel2.pack(side=LEFT, expand=False, fill=X, padx=(0, 8))
+    romEntry2.pack(side=LEFT, expand=True, fill=BOTH, pady=1)
     romSelectButton2.pack(side=LEFT)
 
     def adjustRom():
@@ -227,6 +295,7 @@ def adjustGUI():
         guiargs.sprite = rom_vars.sprite
         if rom_vars.sprite_pool:
             guiargs.world = AdjusterWorld(rom_vars.sprite_pool)
+        guiargs.oof = rom_vars.oof
 
         try:
             guiargs, path = adjust(args=guiargs)
@@ -265,16 +334,16 @@ def adjustGUI():
         else:
             guiargs.sprite = rom_vars.sprite
         guiargs.sprite_pool = rom_vars.sprite_pool
+        guiargs.oof = rom_vars.oof
         persistent_store("adjuster", GAME_ALTTP, guiargs)
         messagebox.showinfo(title="Success", message="Settings saved to persistent storage")
 
     adjustButton = Button(bottomFrame2, text='Adjust Rom', command=adjustRom)
-    rom_options_frame.pack(side=TOP)
+    rom_options_frame.pack(side=TOP, padx=8, pady=8, fill=BOTH, expand=True)
     adjustButton.pack(side=LEFT, padx=(5,5))
 
     saveButton = Button(bottomFrame2, text='Save Settings', command=saveGUISettings)
     saveButton.pack(side=LEFT, padx=(5,5))
-
     bottomFrame2.pack(side=TOP, pady=(5,5))
 
     tkinter_center_window(adjustWindow)
@@ -296,10 +365,10 @@ def run_sprite_update():
     logging.info("Done updating sprites")
 
 
-def update_sprites(task, on_finish=None):
+def update_sprites(task, on_finish=None, repository_url: str = "https://alttpr.com/sprites"):
     resultmessage = ""
     successful = True
-    sprite_dir = user_path("data", "sprites", "alttpr")
+    sprite_dir = user_path("data", "sprites", "alttp", "remote")
     os.makedirs(sprite_dir, exist_ok=True)
     ctx = get_cert_none_ssl_context()
 
@@ -309,11 +378,11 @@ def update_sprites(task, on_finish=None):
             on_finish(successful, resultmessage)
 
     try:
-        task.update_status("Downloading alttpr sprites list")
-        with urlopen('https://alttpr.com/sprites', context=ctx) as response:
+        task.update_status("Downloading remote sprites list")
+        with urlopen(repository_url, context=ctx) as response:
             sprites_arr = json.loads(response.read().decode("utf-8"))
     except Exception as e:
-        resultmessage = "Error getting list of alttpr sprites. Sprites not updated.\n\n%s: %s" % (type(e).__name__, e)
+        resultmessage = "Error getting list of remote sprites. Sprites not updated.\n\n%s: %s" % (type(e).__name__, e)
         successful = False
         task.queue_event(finished)
         return
@@ -321,13 +390,13 @@ def update_sprites(task, on_finish=None):
     try:
         task.update_status("Determining needed sprites")
         current_sprites = [os.path.basename(file) for file in glob(sprite_dir + '/*')]
-        alttpr_sprites = [(sprite['file'], os.path.basename(urlparse(sprite['file']).path))
+        remote_sprites = [(sprite['file'], os.path.basename(urlparse(sprite['file']).path))
                           for sprite in sprites_arr if sprite["author"] != "Nintendo"]
-        needed_sprites = [(sprite_url, filename) for (sprite_url, filename) in alttpr_sprites if
+        needed_sprites = [(sprite_url, filename) for (sprite_url, filename) in remote_sprites if
                           filename not in current_sprites]
 
-        alttpr_filenames = [filename for (_, filename) in alttpr_sprites]
-        obsolete_sprites = [sprite for sprite in current_sprites if sprite not in alttpr_filenames]
+        remote_filenames = [filename for (_, filename) in remote_sprites]
+        obsolete_sprites = [sprite for sprite in current_sprites if sprite not in remote_filenames]
     except Exception as e:
         resultmessage = "Error Determining which sprites to update. Sprites not updated.\n\n%s: %s" % (
         type(e).__name__, e)
@@ -379,7 +448,7 @@ def update_sprites(task, on_finish=None):
                 successful = False
 
     if successful:
-        resultmessage = "alttpr sprites updated successfully"
+        resultmessage = "Remote sprites updated successfully"
 
     task.queue_event(finished)
 
@@ -481,13 +550,40 @@ class BackgroundTaskProgressNullWindow(BackgroundTask):
         self.stop()
 
 
+class AttachTooltip(object):
+
+    def __init__(self, parent, text):
+        self._parent = parent
+        self._text = text
+        self._window = None
+        parent.bind('<Enter>', lambda event : self.show())
+        parent.bind('<Leave>', lambda event : self.hide())
+
+    def show(self):
+        if self._window or not self._text:
+            return
+        self._window = Toplevel(self._parent)
+        #remove window bar controls
+        self._window.wm_overrideredirect(1)
+        #adjust positioning
+        x, y, *_ = self._parent.bbox("insert")
+        x = x + self._parent.winfo_rootx() + 20
+        y = y + self._parent.winfo_rooty() + 20
+        self._window.wm_geometry("+{0}+{1}".format(x,y))
+        #show text
+        label = Label(self._window, text=self._text, justify=LEFT)
+        label.pack(ipadx=1)
+
+    def hide(self):
+        if self._window:
+            self._window.destroy()
+            self._window = None
+
+
 def get_rom_frame(parent=None):
     adjuster_settings = get_adjuster_settings(GAME_ALTTP)
-    if not adjuster_settings:
-        adjuster_settings = Namespace()
-        adjuster_settings.baserom = "Zelda no Densetsu - Kamigami no Triforce (Japan).sfc"
 
-    romFrame = Frame(parent)
+    romFrame = Frame(parent, padx=8, pady=8)
     baseRomLabel = Label(romFrame, text='LttP Base Rom: ')
     romVar = StringVar(value=adjuster_settings.baserom)
     romEntry = Entry(romFrame, textvariable=romVar)
@@ -507,44 +603,19 @@ def get_rom_frame(parent=None):
     romSelectButton = Button(romFrame, text='Select Rom', command=RomSelect)
 
     baseRomLabel.pack(side=LEFT)
-    romEntry.pack(side=LEFT, expand=True, fill=X)
+    romEntry.pack(side=LEFT, expand=True, fill=BOTH, pady=1)
     romSelectButton.pack(side=LEFT)
-    romFrame.pack(side=TOP, expand=True, fill=X)
+    romFrame.pack(side=TOP, fill=X)
 
     return romFrame, romVar
 
-
 def get_rom_options_frame(parent=None):
     adjuster_settings = get_adjuster_settings(GAME_ALTTP)
-    defaults = {
-        "auto_apply": 'ask',
-        "music": True,
-        "reduceflashing": True,
-        "deathlink": False,
-        "sprite": None,
-        "quickswap": True,
-        "menuspeed": 'normal',
-        "heartcolor": 'red',
-        "heartbeep": 'normal',
-        "ow_palettes": 'default',
-        "uw_palettes": 'default',
-        "hud_palettes": 'default',
-        "sword_palettes": 'default',
-        "shield_palettes": 'default',
-        "sprite_pool": [],
-        "allowcollect": False,
-    }
-    if not adjuster_settings:
-        adjuster_settings = Namespace()
-    for key, defaultvalue in defaults.items():
-        if not hasattr(adjuster_settings, key):
-            setattr(adjuster_settings, key, defaultvalue)
 
-    romOptionsFrame = LabelFrame(parent, text="Rom options")
-    romOptionsFrame.columnconfigure(0, weight=1)
-    romOptionsFrame.columnconfigure(1, weight=1)
+    romOptionsFrame = LabelFrame(parent, text="Rom options", padx=8, pady=8)
+
     for i in range(5):
-        romOptionsFrame.rowconfigure(i, weight=1)
+        romOptionsFrame.rowconfigure(i, weight=0, pad=4)
     vars = Namespace()
 
     vars.MusicVar = IntVar()
@@ -595,15 +666,53 @@ def get_rom_options_frame(parent=None):
     spriteSelectButton = Button(spriteDialogFrame, text='...', command=SpriteSelect)
 
     baseSpriteLabel.pack(side=LEFT)
-    spriteEntry.pack(side=LEFT)
+    spriteEntry.pack(side=LEFT, expand=True, fill=X)
     spriteSelectButton.pack(side=LEFT)
+
+    oofDialogFrame = Frame(romOptionsFrame)
+    oofDialogFrame.grid(row=1, column=1)
+    baseOofLabel = Label(oofDialogFrame, text='"OOF" Sound:')
+
+    vars.oofNameVar = StringVar()
+    vars.oof = adjuster_settings.oof
+
+    def set_oof(oof_param):
+        nonlocal vars
+        if isinstance(oof_param, str) and os.path.isfile(oof_param) and os.path.getsize(oof_param) <= 2673:
+            vars.oof = oof_param
+            vars.oofNameVar.set(oof_param.rsplit('/',1)[-1])
+        else:
+            vars.oof = None
+            vars.oofNameVar.set('(unchanged)')
+
+    set_oof(adjuster_settings.oof)
+    oofEntry = Label(oofDialogFrame, textvariable=vars.oofNameVar)
+
+    def OofSelect():
+        nonlocal vars
+        oof_file = filedialog.askopenfilename(
+            filetypes=[("BRR files", ".brr"),
+                       ("All Files", "*")])
+        try:
+            set_oof(oof_file)
+        except Exception:
+            set_oof(None)
+
+    oofSelectButton = Button(oofDialogFrame, text='...', command=OofSelect)
+    AttachTooltip(oofSelectButton,
+                  text="Select a .brr file no more than 2673 bytes.\n" + \
+                  "This can be created from a <=0.394s 16-bit signed PCM .wav file at 12khz using snesbrr.")
+
+    baseOofLabel.pack(side=LEFT)
+    oofEntry.pack(side=LEFT)
+    oofSelectButton.pack(side=LEFT)
 
     vars.quickSwapVar = IntVar(value=adjuster_settings.quickswap)
     quickSwapCheckbutton = Checkbutton(romOptionsFrame, text="L/R Quickswapping", variable=vars.quickSwapVar)
     quickSwapCheckbutton.grid(row=1, column=0, sticky=E)
 
     menuspeedFrame = Frame(romOptionsFrame)
-    menuspeedFrame.grid(row=1, column=1, sticky=E)
+    menuspeedFrame.grid(row=6, column=1, sticky=E)
     menuspeedLabel = Label(menuspeedFrame, text='Menu speed')
     menuspeedLabel.pack(side=LEFT)
     vars.menuspeedVar = StringVar()
@@ -760,7 +869,7 @@ class SpriteSelector():
         def open_custom_sprite_dir(_evt):
             open_file(self.custom_sprite_dir)
 
-        alttpr_frametitle = Label(self.window, text='ALTTPR Sprites')
+        remote_frametitle = Label(self.window, text='Remote Sprites')
 
         custom_frametitle = Frame(self.window)
         title_text = Label(custom_frametitle, text="Custom Sprites")
@@ -769,8 +878,8 @@ class SpriteSelector():
         title_link.pack(side=LEFT)
         title_link.bind("<Button-1>", open_custom_sprite_dir)
 
-        self.icon_section(alttpr_frametitle, self.alttpr_sprite_dir,
-                          'ALTTPR sprites not found. Click "Update alttpr sprites" to download them.')
+        self.icon_section(remote_frametitle, self.remote_sprite_dir,
+                          'Remote sprites not found. Click "Update remote sprites" to download them.')
         self.icon_section(custom_frametitle, self.custom_sprite_dir,
                           'Put sprites in the custom sprites folder (see open link above) to have them appear here.')
         if not randomOnEvent:
@@ -783,11 +892,18 @@ class SpriteSelector():
             button = Button(frame, text="Browse for file...", command=self.browse_for_sprite)
             button.pack(side=RIGHT, padx=(5, 0))
 
-        button = Button(frame, text="Update alttpr sprites", command=self.update_alttpr_sprites)
+        button = Button(frame, text="Update remote sprites", command=self.update_remote_sprites)
         button.pack(side=RIGHT, padx=(5, 0))
+
+        repository_label = Label(frame, text='Sprite Repository:')
+        self.repository_url = StringVar(frame, "https://alttpr.com/sprites")
+        repository_entry = Entry(frame, textvariable=self.repository_url)
         
+        repository_entry.pack(side=RIGHT, expand=True, fill=BOTH, pady=1)
+        repository_label.pack(side=RIGHT, expand=False, padx=(0, 5))
+
         button = Button(frame, text="Do not adjust sprite",command=self.use_default_sprite)
-        button.pack(side=LEFT,padx=(0,5))
+        button.pack(side=LEFT, padx=(0, 5))
 
         button = Button(frame, text="Default Link sprite", command=self.use_default_link_sprite)
         button.pack(side=LEFT, padx=(0, 5))
@@ -901,6 +1017,7 @@ class SpriteSelector():
                 self.add_to_sprite_pool(sprite)
 
     def icon_section(self, frame_label, path, no_results_label):
+        os.makedirs(path, exist_ok=True)
         frame = LabelFrame(self.window, labelwidget=frame_label, padx=5, pady=5)
         frame.pack(side=TOP, fill=X)
 
@@ -946,7 +1063,7 @@ class SpriteSelector():
         for i, button in enumerate(frame.buttons):
             button.grid(row=i // self.spritesPerRow, column=i % self.spritesPerRow)
 
-    def update_alttpr_sprites(self):
+    def update_remote_sprites(self):
         # need to wrap in try catch. We don't want errors getting the json or downloading the files to break us.
         self.window.destroy()
         self.parent.update()
@@ -959,7 +1076,8 @@ class SpriteSelector():
                 messagebox.showerror("Sprite Updater", resultmessage)
             SpriteSelector(self.parent, self.callback, self.adjuster)
 
-        BackgroundTaskProgress(self.parent, update_sprites, "Updating Sprites", on_finish)
+        BackgroundTaskProgress(self.parent, update_sprites, "Updating Sprites",
+                               on_finish, self.repository_url.get())
 
     def browse_for_sprite(self):
         sprite = filedialog.askopenfilename(
@@ -1049,12 +1167,12 @@ class SpriteSelector():
             os.makedirs(self.custom_sprite_dir)
 
     @property
-    def alttpr_sprite_dir(self):
-        return user_path("data", "sprites", "alttpr")
+    def remote_sprite_dir(self):
+        return user_path("data", "sprites", "alttp", "remote")
 
     @property
     def custom_sprite_dir(self):
-        return user_path("data", "sprites", "custom")
+        return user_path("data", "sprites", "alttp", "custom")
 
 
 def get_image_for_sprite(sprite, gif_only: bool = False):

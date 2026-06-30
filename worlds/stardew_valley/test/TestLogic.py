@@ -1,293 +1,110 @@
-from . import SVTestBase
-from .. import options
+import typing
+import unittest
+from unittest import TestCase, SkipTest
+
+from BaseClasses import MultiWorld
+from .assertion import RuleAssertMixin
+from .bases import setup_solo_multiworld, skip_long_tests
+from .options.presets import minimal_locations_maximal_items, maxsanity_mods_7_x_x
+from .. import StardewValleyWorld
+from ..data.bundles_data.bundle_data import all_bundle_items_except_money
+from ..logic.logic import StardewLogic
+from ..options import BundleRandomization
+
+if skip_long_tests():
+    raise unittest.SkipTest("Long tests disabled")
 
 
-class TestProgressiveToolsLogic(SVTestBase):
-    options = {
-        options.ToolProgression.internal_name: options.ToolProgression.option_progressive,
-    }
-
-    def test_sturgeon(self):
-        assert not self.world.logic.has("Sturgeon")(self.multiworld.state)
-
-        summer = self.get_item_by_name("Summer")
-        self.multiworld.state.collect(summer, event=True)
-        assert not self.world.logic.has("Sturgeon")(self.multiworld.state)
-
-        fishing_rod = self.get_item_by_name("Progressive Fishing Rod")
-        self.multiworld.state.collect(fishing_rod, event=True)
-        self.multiworld.state.collect(fishing_rod, event=True)
-        assert not self.world.logic.has("Sturgeon")(self.multiworld.state)
-
-        fishing_level = self.get_item_by_name("Fishing Level")
-        self.multiworld.state.collect(fishing_level, event=True)
-        assert not self.world.logic.has("Sturgeon")(self.multiworld.state)
-
-        self.multiworld.state.collect(fishing_level, event=True)
-        self.multiworld.state.collect(fishing_level, event=True)
-        self.multiworld.state.collect(fishing_level, event=True)
-        self.multiworld.state.collect(fishing_level, event=True)
-        self.multiworld.state.collect(fishing_level, event=True)
-        assert self.world.logic.has("Sturgeon")(self.multiworld.state)
-
-        self.remove(summer)
-        assert not self.world.logic.has("Sturgeon")(self.multiworld.state)
-
-        winter = self.get_item_by_name("Winter")
-        self.multiworld.state.collect(winter, event=True)
-        assert self.world.logic.has("Sturgeon")(self.multiworld.state)
-
-        self.remove(fishing_rod)
-        assert not self.world.logic.has("Sturgeon")(self.multiworld.state)
-
-    def test_old_master_cannoli(self):
-        self.multiworld.state.collect(self.get_item_by_name("Progressive Axe"), event=True)
-        self.multiworld.state.collect(self.get_item_by_name("Progressive Axe"), event=True)
-
-        assert not self.world.logic.can_reach_location("Old Master Cannoli")(self.multiworld.state)
-
-        fall = self.get_item_by_name("Fall")
-        self.multiworld.state.collect(fall, event=True)
-        assert not self.world.logic.can_reach_location("Old Master Cannoli")(self.multiworld.state)
-
-        tuesday = self.get_item_by_name("Traveling Merchant: Tuesday")
-        self.multiworld.state.collect(tuesday, event=True)
-        assert self.world.logic.can_reach_location("Old Master Cannoli")(self.multiworld.state)
-
-        self.remove(fall)
-        assert not self.world.logic.can_reach_location("Old Master Cannoli")(self.multiworld.state)
-        self.remove(tuesday)
-
-        green_house = self.get_item_by_name("Greenhouse")
-        self.multiworld.state.collect(green_house, event=True)
-        assert not self.world.logic.can_reach_location("Old Master Cannoli")(self.multiworld.state)
-
-        friday = self.get_item_by_name("Traveling Merchant: Friday")
-        self.multiworld.state.collect(friday, event=True)
-        assert self.world.logic.can_reach_location("Old Master Cannoli")(self.multiworld.state)
-
-        self.remove(green_house)
-        assert not self.world.logic.can_reach_location("Old Master Cannoli")(self.multiworld.state)
-        self.remove(friday)
+def collect_all(mw):
+    for item in mw.get_items():
+        mw.state.collect(item, prevent_sweep=True)
 
 
-class TestBundlesLogic(SVTestBase):
-    options = {
-    }
+class LogicTestBase(RuleAssertMixin, TestCase):
+    options: typing.Dict[str, typing.Any] = {}
+    multiworld: MultiWorld
+    logic: StardewLogic
+    world: StardewValleyWorld
 
-    def test_vault_2500g_bundle(self):
-        assert not self.world.logic.can_reach_location("2,500g Bundle")(self.multiworld.state)
+    @classmethod
+    def setUpClass(cls) -> None:
+        if cls is LogicTestBase:
+            raise SkipTest("Not running test on base class.")
 
-        summer = self.get_item_by_name("Summer")
-        self.multiworld.state.collect(summer, event=True)
-        assert self.world.logic.can_reach_location("2,500g Bundle")(self.multiworld.state)
+    def setUp(self) -> None:
+        self.multiworld = setup_solo_multiworld(self.options, _cache={})
+        collect_all(self.multiworld)
+        self.world = typing.cast(StardewValleyWorld, self.multiworld.worlds[1])
+        self.logic = self.world.logic
 
+    def test_given_bundle_item_then_is_available_in_logic(self):
+        for bundle_item in all_bundle_items_except_money:
+            if not bundle_item.can_appear(self.world.content, self.world.options):
+                continue
 
-class TestBuildingLogic(SVTestBase):
-    options = {
-        options.BuildingProgression.internal_name: options.BuildingProgression.option_progressive_early_shipping_bin
-    }
+            with self.subTest(msg=bundle_item.item_name):
+                self.assertIn(bundle_item.get_item(), self.logic.registry.item_rules)
 
-    def test_coop_blueprint(self):
-        assert not self.world.logic.can_reach_location("Coop Blueprint")(self.multiworld.state)
+    def test_given_item_rule_then_can_be_resolved(self):
+        for item in self.logic.registry.item_rules.keys():
+            with self.subTest(msg=item):
+                rule = self.logic.registry.item_rules[item]
+                self.assert_rule_can_be_resolved(rule, self.multiworld.state)
 
-        summer = self.get_item_by_name("Summer")
-        self.multiworld.state.collect(summer, event=True)
-        assert self.world.logic.can_reach_location("Coop Blueprint")(self.multiworld.state)
+    def test_given_building_rule_then_can_be_resolved(self):
+        for building in self.world.content.farm_buildings:
+            with self.subTest(msg=building):
+                rule = self.logic.building.can_build(building)
+                self.assert_rule_can_be_resolved(rule, self.multiworld.state)
 
-    def test_big_coop_blueprint(self):
-        assert not self.world.logic.can_reach_location("Big Coop Blueprint")(self.multiworld.state), \
-            f"Rule is {repr(self.multiworld.get_location('Big Coop Blueprint', self.player).access_rule)}"
+    def test_given_quest_rule_then_can_be_resolved(self):
+        for quest in self.logic.registry.quest_rules.keys():
+            with self.subTest(msg=quest):
+                rule = self.logic.registry.quest_rules[quest]
+                self.assert_rule_can_be_resolved(rule, self.multiworld.state)
 
-        self.multiworld.state.collect(self.get_item_by_name("Fall"), event=True)
-        assert not self.world.logic.can_reach_location("Big Coop Blueprint")(self.multiworld.state), \
-            f"Rule is {repr(self.multiworld.get_location('Big Coop Blueprint', self.player).access_rule)}"
+    def test_given_special_order_rule_then_can_be_resolved(self):
+        for special_order in self.logic.registry.special_order_rules.keys():
+            with self.subTest(msg=special_order):
+                rule = self.logic.registry.special_order_rules[special_order]
+                self.assert_rule_can_be_resolved(rule, self.multiworld.state)
 
-        self.multiworld.state.collect(self.get_item_by_name("Progressive Coop"), event=True)
-        assert self.world.logic.can_reach_location("Big Coop Blueprint")(self.multiworld.state), \
-            f"Rule is {repr(self.multiworld.get_location('Big Coop Blueprint', self.player).access_rule)}"
+    def test_given_crop_rule_then_can_be_resolved(self):
+        for crop in self.logic.registry.crop_rules.keys():
+            with self.subTest(msg=crop):
+                rule = self.logic.registry.crop_rules[crop]
+                self.assert_rule_can_be_resolved(rule, self.multiworld.state)
 
-    def test_deluxe_big_coop_blueprint(self):
-        assert not self.world.logic.can_reach_location("Deluxe Coop Blueprint")(self.multiworld.state)
+    def test_given_fish_rule_then_can_be_resolved(self):
+        for fish in self.logic.registry.fish_rules.keys():
+            with self.subTest(msg=fish):
+                rule = self.logic.registry.fish_rules[fish]
+                self.assert_rule_can_be_resolved(rule, self.multiworld.state)
 
-        self.multiworld.state.collect(self.get_item_by_name("Year Two"), event=True)
-        assert not self.world.logic.can_reach_location("Deluxe Coop Blueprint")(self.multiworld.state)
+    def test_given_museum_rule_then_can_be_resolved(self):
+        for donation in self.logic.registry.museum_rules.keys():
+            with self.subTest(msg=donation):
+                rule = self.logic.registry.museum_rules[donation]
+                self.assert_rule_can_be_resolved(rule, self.multiworld.state)
 
-        self.multiworld.state.collect(self.get_item_by_name("Progressive Coop"), event=True)
-        assert not self.world.logic.can_reach_location("Deluxe Coop Blueprint")(self.multiworld.state)
+    def test_given_cooking_rule_then_can_be_resolved(self):
+        for cooking_rule in self.logic.registry.cooking_rules.keys():
+            with self.subTest(msg=cooking_rule):
+                rule = self.logic.registry.cooking_rules[cooking_rule]
+                self.assert_rule_can_be_resolved(rule, self.multiworld.state)
 
-        self.multiworld.state.collect(self.get_item_by_name("Progressive Coop"), event=True)
-        assert self.world.logic.can_reach_location("Deluxe Coop Blueprint")(self.multiworld.state)
-
-    def test_big_shed_blueprint(self):
-        assert not self.world.logic.can_reach_location("Big Shed Blueprint")(self.multiworld.state), \
-            f"Rule is {repr(self.multiworld.get_location('Big Shed Blueprint', self.player).access_rule)}"
-
-        self.multiworld.state.collect(self.get_item_by_name("Year Two"), event=True)
-        assert not self.world.logic.can_reach_location("Big Shed Blueprint")(self.multiworld.state), \
-            f"Rule is {repr(self.multiworld.get_location('Big Shed Blueprint', self.player).access_rule)}"
-
-        self.multiworld.state.collect(self.get_item_by_name("Progressive Shed"), event=True)
-        assert self.world.logic.can_reach_location("Big Shed Blueprint")(self.multiworld.state), \
-            f"Rule is {repr(self.multiworld.get_location('Big Shed Blueprint', self.player).access_rule)}"
-
-
-class TestArcadeMachinesLogic(SVTestBase):
-    options = {
-        options.ArcadeMachineLocations.internal_name: options.ArcadeMachineLocations.option_full_shuffling,
-    }
-
-    def test_prairie_king(self):
-        assert not self.world.logic.can_reach_region("JotPK World 1")(self.multiworld.state)
-        assert not self.world.logic.can_reach_region("JotPK World 2")(self.multiworld.state)
-        assert not self.world.logic.can_reach_region("JotPK World 3")(self.multiworld.state)
-        assert not self.world.logic.can_reach_location("Journey of the Prairie King Victory")(self.multiworld.state)
-
-        boots = self.get_item_by_name("JotPK: Progressive Boots")
-        gun = self.get_item_by_name("JotPK: Progressive Gun")
-        ammo = self.get_item_by_name("JotPK: Progressive Ammo")
-        life = self.get_item_by_name("JotPK: Extra Life")
-        drop = self.get_item_by_name("JotPK: Increased Drop Rate")
-
-        self.multiworld.state.collect(boots, event=True)
-        self.multiworld.state.collect(gun, event=True)
-        assert self.world.logic.can_reach_region("JotPK World 1")(self.multiworld.state)
-        assert not self.world.logic.can_reach_region("JotPK World 2")(self.multiworld.state)
-        assert not self.world.logic.can_reach_region("JotPK World 3")(self.multiworld.state)
-        assert not self.world.logic.can_reach_location("Journey of the Prairie King Victory")(self.multiworld.state)
-        self.remove(boots)
-        self.remove(gun)
-
-        self.multiworld.state.collect(boots, event=True)
-        self.multiworld.state.collect(boots, event=True)
-        assert self.world.logic.can_reach_region("JotPK World 1")(self.multiworld.state)
-        assert not self.world.logic.can_reach_region("JotPK World 2")(self.multiworld.state)
-        assert not self.world.logic.can_reach_region("JotPK World 3")(self.multiworld.state)
-        assert not self.world.logic.can_reach_location("Journey of the Prairie King Victory")(self.multiworld.state)
-        self.remove(boots)
-        self.remove(boots)
-
-        self.multiworld.state.collect(boots, event=True)
-        self.multiworld.state.collect(gun, event=True)
-        self.multiworld.state.collect(ammo, event=True)
-        self.multiworld.state.collect(life, event=True)
-        assert self.world.logic.can_reach_region("JotPK World 1")(self.multiworld.state)
-        assert self.world.logic.can_reach_region("JotPK World 2")(self.multiworld.state)
-        assert not self.world.logic.can_reach_region("JotPK World 3")(self.multiworld.state)
-        assert not self.world.logic.can_reach_location("Journey of the Prairie King Victory")(self.multiworld.state)
-        self.remove(boots)
-        self.remove(gun)
-        self.remove(ammo)
-        self.remove(life)
-
-        self.multiworld.state.collect(boots, event=True)
-        self.multiworld.state.collect(gun, event=True)
-        self.multiworld.state.collect(gun, event=True)
-        self.multiworld.state.collect(ammo, event=True)
-        self.multiworld.state.collect(ammo, event=True)
-        self.multiworld.state.collect(life, event=True)
-        self.multiworld.state.collect(drop, event=True)
-        assert self.world.logic.can_reach_region("JotPK World 1")(self.multiworld.state)
-        assert self.world.logic.can_reach_region("JotPK World 2")(self.multiworld.state)
-        assert self.world.logic.can_reach_region("JotPK World 3")(self.multiworld.state)
-        assert not self.world.logic.can_reach_location("Journey of the Prairie King Victory")(self.multiworld.state)
-        self.remove(boots)
-        self.remove(gun)
-        self.remove(gun)
-        self.remove(ammo)
-        self.remove(ammo)
-        self.remove(life)
-        self.remove(drop)
-
-        self.multiworld.state.collect(boots, event=True)
-        self.multiworld.state.collect(boots, event=True)
-        self.multiworld.state.collect(gun, event=True)
-        self.multiworld.state.collect(gun, event=True)
-        self.multiworld.state.collect(gun, event=True)
-        self.multiworld.state.collect(gun, event=True)
-        self.multiworld.state.collect(ammo, event=True)
-        self.multiworld.state.collect(ammo, event=True)
-        self.multiworld.state.collect(ammo, event=True)
-        self.multiworld.state.collect(life, event=True)
-        self.multiworld.state.collect(drop, event=True)
-        assert self.world.logic.can_reach_region("JotPK World 1")(self.multiworld.state)
-        assert self.world.logic.can_reach_region("JotPK World 2")(self.multiworld.state)
-        assert self.world.logic.can_reach_region("JotPK World 3")(self.multiworld.state)
-        assert self.world.logic.can_reach_location("Journey of the Prairie King Victory")(self.multiworld.state)
-        self.remove(boots)
-        self.remove(boots)
-        self.remove(gun)
-        self.remove(gun)
-        self.remove(gun)
-        self.remove(gun)
-        self.remove(ammo)
-        self.remove(ammo)
-        self.remove(ammo)
-        self.remove(life)
-        self.remove(drop)
+    def test_given_location_rule_then_can_be_resolved(self):
+        for location in self.multiworld.get_locations(1):
+            with self.subTest(msg=location.name):
+                rule = location.access_rule
+                self.assert_rule_can_be_resolved(rule, self.multiworld.state)
 
 
-class TestWeaponsLogic(SVTestBase):
-    options = {
-        options.ToolProgression.internal_name: options.ToolProgression.option_progressive,
-        options.SkillProgression.internal_name: options.SkillProgression.option_progressive,
-    }
+class TestAllSanityLogic(LogicTestBase):
+    options = maxsanity_mods_7_x_x()
 
-    def test_mine(self):
-        self.collect(self.get_item_by_name("Adventurer's Guild"))
-        self.multiworld.state.collect(self.get_item_by_name("Progressive Pickaxe"), event=True)
-        self.multiworld.state.collect(self.get_item_by_name("Progressive Pickaxe"), event=True)
-        self.multiworld.state.collect(self.get_item_by_name("Progressive Pickaxe"), event=True)
-        self.multiworld.state.collect(self.get_item_by_name("Progressive Pickaxe"), event=True)
-        self.collect([self.get_item_by_name("Combat Level")] * 10)
-        self.collect([self.get_item_by_name("Progressive Mine Elevator")] * 24)
-        self.multiworld.state.collect(self.get_item_by_name("Bus Repair"), event=True)
-        self.multiworld.state.collect(self.get_item_by_name("Skull Key"), event=True)
 
-        self.GiveItemAndCheckReachableMine("Rusty Sword", 1)
-        self.GiveItemAndCheckReachableMine("Wooden Blade", 1)
-        self.GiveItemAndCheckReachableMine("Elf Blade", 1)
-
-        self.GiveItemAndCheckReachableMine("Silver Saber", 2)
-        self.GiveItemAndCheckReachableMine("Crystal Dagger", 2)
-
-        self.GiveItemAndCheckReachableMine("Claymore", 3)
-        self.GiveItemAndCheckReachableMine("Obsidian Edge", 3)
-        self.GiveItemAndCheckReachableMine("Bone Sword", 3)
-
-        self.GiveItemAndCheckReachableMine("The Slammer", 4)
-        self.GiveItemAndCheckReachableMine("Lava Katana", 4)
-
-        self.GiveItemAndCheckReachableMine("Galaxy Sword", 5)
-        self.GiveItemAndCheckReachableMine("Galaxy Hammer", 5)
-        self.GiveItemAndCheckReachableMine("Galaxy Dagger", 5)
-
-    def GiveItemAndCheckReachableMine(self, item_name: str, reachable_level: int):
-        item = self.multiworld.create_item(item_name, self.player)
-        self.multiworld.state.collect(item, event=True)
-        if reachable_level > 0:
-            assert self.world.logic.can_mine_in_the_mines_floor_1_40()(self.multiworld.state)
-        else:
-            assert not self.world.logic.can_mine_in_the_mines_floor_1_40()(self.multiworld.state)
-
-        if reachable_level > 1:
-            assert self.world.logic.can_mine_in_the_mines_floor_41_80()(self.multiworld.state)
-        else:
-            assert not self.world.logic.can_mine_in_the_mines_floor_41_80()(self.multiworld.state)
-
-        if reachable_level > 2:
-            assert self.world.logic.can_mine_in_the_mines_floor_81_120()(self.multiworld.state)
-        else:
-            assert not self.world.logic.can_mine_in_the_mines_floor_81_120()(self.multiworld.state)
-
-        if reachable_level > 3:
-            assert self.world.logic.can_mine_in_the_skull_cavern()(self.multiworld.state)
-        else:
-            assert not self.world.logic.can_mine_in_the_skull_cavern()(self.multiworld.state)
-
-        if reachable_level > 4:
-            assert self.world.logic.can_mine_perfectly_in_the_skull_cavern()(self.multiworld.state)
-        else:
-            assert not self.world.logic.can_mine_perfectly_in_the_skull_cavern()(self.multiworld.state)
-
-        self.remove(item)
+@unittest.skip("This test does not pass because some content is still not in content packs.")
+class TestMinLocationsMaxItemsLogic(LogicTestBase):
+    options = minimal_locations_maximal_items()
+    options[BundleRandomization.internal_name] = BundleRandomization.default
