@@ -28,7 +28,6 @@ class Victory(Choice):
     Solus Heart: Default the Solus Heart in the Neural Sanctum. (ALLOYED DLC required! Will select any if not enabled.)
     Any: Any victory in the game will count. See Final Stage Death for additional ways.
     """
-    # TODO Add option for all bosses
     display_name = "Victory Condition"
     option_any = 0
     option_mithrix = 1
