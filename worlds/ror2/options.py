@@ -143,7 +143,8 @@ class FinalStageDeath(Toggle):
     Victory: mithrix - only dying in Commencement will count.
     Victory: voidling - only dying in The Planetarium will count.
     Victory: limbo - Obliterating yourself will count.
-    Victory: falseson - only dying in Prime Meridian will count."""
+    Victory: falseson - only dying in Prime Meridian will count.
+    Victory: solus_heart - only dying in Neural Sanctum will count."""
     display_name = "Final Stage Death is Win"
 
 
