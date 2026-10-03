@@ -88,13 +88,13 @@ def create_explore_regions(ror2_world: "RiskOfRainWorld") -> None:
 
     dlc_alloyed_regions: Dict[str, RoRRegionData] = {
         "Pretender's Precipice":                RoRRegionData([], ["OrderedStage_2"]),
-        "Iron Alluvium":                        RoRRegionData([], ["OrderedStage_3"]),
+        "Iron Alluvium":                        RoRRegionData([], ["OrderedStage_3", "Conduit Canyon"]),
         "Conduit Canyon":                       RoRRegionData([], ["OrderedStage_4", "Solutional Haunt"]),
         "Repurposed Crater":                    RoRRegionData([], ["OrderedStage_4"]),
     }
 
     dlc_alloyed_variant_regions: Dict[str, RoRRegionData] = {
-        "Iron Auroras":                         RoRRegionData([], ["OrderedStage_3"]),
+        "Iron Auroras":                         RoRRegionData([], ["OrderedStage_3", "Conduit Canyon"]),
     }
 
     dlc_alloyed_other_regions: Dict[str, RoRRegionData] = {
@@ -175,8 +175,12 @@ def create_explore_regions(ror2_world: "RiskOfRainWorld") -> None:
     if ror2_options.dlc_alloyed:
         other_regions["OrderedStage_1"].region_exits.append("Pretender's Precipice")
         other_regions["OrderedStage_2"].region_exits.append("Iron Alluvium")
-        other_regions["OrderedStage_3"].region_exits.append("Conduit Canyon")
         other_regions["OrderedStage_3"].region_exits.append("Repurposed Crater")
+        # Conduit Canyon special handling since not all OrderStage_3 stages can access this.
+        non_dlc_regions["Rallypoint Delta"].region_exits.append("Conduit Canyon")
+        non_dlc_regions["Scorched Acres"].region_exits.append("Conduit Canyon")
+        if ror2_options.dlc_sotv:
+            dlc_sotv_regions["Sulfur Pools"].region_exits.append("Conduit Canyon")
     if ror2_options.dlc_alloyed and ror2_options.stage_variants:
         other_regions["OrderedStage_2"].region_exits.append("Iron Auroras")
 

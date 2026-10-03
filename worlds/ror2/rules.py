@@ -223,7 +223,7 @@ def set_rules(ror2_world: "RiskOfRainWorld") -> None:
         if ror2_options.dlc_alloyed:
             has_entrance_access_rule(multiworld, "Solutional Haunt", "Computational Exchange", player)
             has_entrance_access_rule(multiworld, "Computational Exchange", "Neural Sanctum", player)
-            # has_entrance_access_rule(multiworld, "Stage 5", "Neural Sanctum", player)
+            has_entrance_access_rule(multiworld, "Stage 5", "Neural Sanctum", player)
             # TODO: Are the items that drop in Solutional Haunt and Conduit Canyon Guaranteed to unlock final boss or do they need to be added to the item pool?
 
     # Win Condition
